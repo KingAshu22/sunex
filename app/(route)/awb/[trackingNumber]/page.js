@@ -42,9 +42,94 @@ export default function AWBView({ params }) {
   };
 
   return (
-    <div className="container mx-auto px-1 max-w-4xl pt-0 mt-0">
-      <div className="bg-white border border-black rounded-lg overflow-hidden pt-0 mt-0">
-        <div className="p-4 pt-0 mt-0">
+    <div className="container mx-auto px-1 max-w-4xl -pt-4 mt-0">
+      <style>
+        {`
+    @page {
+      size: A6 portrait;
+      margin: 5mm;
+    }
+
+    @media print {
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body * {
+        visibility: hidden;
+      }
+
+      .arrow {
+          margin-top: -8px;
+      }
+
+      #printable {
+          border: 1px solid grey;
+          border-radius: 16px;
+      }
+
+      #printable, #printable * {
+        visibility: visible;
+      }
+
+      #printable {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        font-size: 9px;
+        line-height: 1.2;
+        background: white;
+        padding: 4mm;
+        box-sizing: border-box;
+      }
+
+      h1, h2 {
+        font-size: 10px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 5px;
+        font-size: 8px;
+      }
+
+      th, td {
+        border: 1px solid #ccc;
+        padding: 2px;
+      }
+
+      thead tr:first-child th:first-child {
+        border-top-left-radius: 4px;
+      }
+
+      thead tr:first-child th:last-child {
+        border-top-right-radius: 4px;
+      }
+
+      tbody tr:last-child td:first-child {
+        border-bottom-left-radius: 4px;
+      }
+
+      tbody tr:last-child td:last-child {
+        border-bottom-right-radius: 4px;
+      }
+
+      .print\\:hidden {
+        display: none !important;
+      }
+
+      .barcode svg {
+        width: 100% !important;
+        height: auto !important;
+      }
+    }
+  `}
+      </style>
+      <div id="printable" className="bg-white rounded-lg overflow-hidden px-2">
+        <div className="p-4 pt-0 mt-2">
           {/* Flex container for logo, barcode, and title */}
           <div className="flex items-center justify-between">
             <div>
@@ -79,16 +164,16 @@ export default function AWBView({ params }) {
             </div>
 
             <div className="text-right">
-              <h1 className="text-2xl font-bold text-[#232C65]">Air Waybill</h1>
+              <h1 className="text-xl font-bold text-[#232C65]">Air Waybill</h1>
               <p className="text-[#E31E24] font-semibold">
                 {awbData?.trackingNumber}
               </p>
             </div>
           </div>
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center -mt-2">
             <div className="flex items-center justify-between">
-              <p className="flex gap-2 text-[#E31E24] font-bold">
-                {awbData?.sender?.country} <MoveRight />{" "}
+              <p className="flex gap-2 text-[#E31E24] font-bold ml-24">
+                {awbData?.sender?.country} <MoveRight className="arrow" />{" "}
                 {awbData?.receiver?.country}
               </p>
             </div>
@@ -140,7 +225,7 @@ export default function AWBView({ params }) {
             <h2 className="text-xs font-semibold text-[#232C65] mb-2">
               Package Information
             </h2>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto h-[405px]">
               <table className="min-w-full divide-y divide-gray-200 text-xs">
                 <thead className="bg-gray-50">
                   <tr>
@@ -168,9 +253,8 @@ export default function AWBView({ params }) {
 
                     return (
                       <tr key={index}>
-                        <td className="px-8 py-2 whitespace-nowrap">{`${
-                          index + 1
-                        }`}</td>
+                        <td className="px-8 py-2 whitespace-nowrap">{`${index + 1
+                          }`}</td>
                         <td className="px-8 py-2 whitespace-nowrap">{`${box.length}×${box.breadth}×${box.height}`}</td>
                         <td className="px-8 py-2 whitespace-nowrap">{`${box.actualWeight} kg`}</td>
                         <td className="px-8 py-2 whitespace-nowrap">{`${box.dimensionalWeight} kg`}</td>

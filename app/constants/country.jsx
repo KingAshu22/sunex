@@ -166,7 +166,6 @@ export const Countries = [
     "Iraq",
     "Kazakhstan",
     "Kiribati",
-    "Korea",
     "Kosovo",
     "Kyrgyzstan",
     "Lebanon",

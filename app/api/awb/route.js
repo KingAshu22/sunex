@@ -1,5 +1,6 @@
 import { connectToDB } from "@/app/_utils/mongodb";
 import Awb from "@/models/Awb";
+import Customer from "@/models/Customer";
 import { NextResponse } from "next/server";
 
 export async function GET(req) {
@@ -37,6 +38,57 @@ export async function POST(req) {
 
     const awb = new Awb(data);
     await awb.save();
+
+    const customer1 = new Customer({
+      name: data.sender.name,
+      address: data.sender.address,
+      country: data.sender.country,
+      zip: data.sender.zip,
+      contact: data.sender.contact,
+      kyc: data.sender.kyc,
+      gst: data.sender.gst,
+      role: "customer",
+      owner: data.sender.owner,
+    });
+
+    const customer2 = new Customer({
+      name: data.receiver.name,
+      address: data.receiver.address,
+      country: data.receiver.country,
+      zip: data.receiver.zip,
+      contact: data.receiver.contact,
+      role: "customer",
+      owner: data.receiver.owner,
+    });
+
+    // Check if a customer with the same name already exists for customer1
+    Customer.findOne({ name: data.sender.name })
+      .then((existingCustomer) => {
+        if (existingCustomer) {
+          // A customer with the same name already exists, do not save customer1
+          console.log("Customer with the same name already exists.");
+          return; // Skip saving customer1
+        } else {
+          // No customer with the same name exists, save customer1
+          return customer1.save();
+        }
+      })
+      .then(() => {
+        // Now, check if a customer with the same name exists for customer2
+        return Customer.findOne({ name: data.receiver.name });
+      })
+      .then((existingCustomer2) => {
+        if (existingCustomer2) {
+          // A customer with the same name already exists for customer2
+          console.log(
+            "Customer with the same name already exists for customer2."
+          );
+          return; // Skip saving customer2
+        } else {
+          // No customer with the same name exists for customer2, save customer2
+          return customer2.save();
+        }
+      })
 
     return NextResponse.json(
       { message: "Parcel added successfully!", awb },
