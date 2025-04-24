@@ -6,6 +6,7 @@ import {
   Settings,
   Sun,
   Box,
+  Contact,
 } from "lucide-react";
 
 import {
@@ -41,6 +42,11 @@ export function AppSidebar() {
       title: "Air Way Bills",
       url: "/awb",
       icon: Box,
+    },
+    {
+      title: "Customers",
+      url: "/customers",
+      icon: Contact,
     },
     // Add Clients menu item conditionally
     ...(userType === "admin"

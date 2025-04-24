@@ -30,24 +30,28 @@ export default function Footer() {
               <span className="font-semibold">Phone:</span> +91 90044 05236
             </p>
             <div className="mb-4">
-              <p className="font-semibold text-white">Address 1:</p>
+              <p className="font-semibold text-white">Registered Address</p>
               <p className="text-gray-300">
-                Shop no 10, Ground floor Prakashwadi CHS Beside Summit Business
-                park, Gundavali, Andheri East, Mumbai, Maharashtra 400093
+                901, 9th Floor, Emerald 2 CHS LTD, Royal Palms, Aarey Milk Colony, Goregaon East, Mumbai 400 065
               </p>
             </div>
             <div>
-              <p className="font-semibold text-white">Address 2:</p>
+              <p className="font-semibold text-white">Andheri Branch</p>
               <p className="text-gray-300">
-                Plot No 22, Gaganvihar Colony, OPP Vishwa Infrastructure,
-                Bagavathapur, Begumpet Hyderabad -500016 TELANGANA,INDIA
+                Shop No 2, Bhuta Industriak Estate, Near Gupta Tea House, Parsi Panchayat Road, Opp. ICICI Call Center, Andheri East, Mumbai 400 099
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-white">Goregaon Branch</p>
+              <p className="text-gray-300">
+                237/1890, Motilal Nagar No 1, Road No 4, Near Ganesh Mandir, Goregaon West, Mumbai 400 104
               </p>
             </div>
           </div>
         </div>
         <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-300">
           <p>
-            &copy; {new Date().getFullYear()} Sun Express Services. All rights
+            &copy; {new Date().getFullYear()} Sunex Services Private Limited. All rights
             reserved | Created by{" "}
             <a
               className="text-[#F44336]"

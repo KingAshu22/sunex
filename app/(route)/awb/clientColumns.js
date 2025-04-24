@@ -3,6 +3,7 @@ import {
     ArrowUpDown,
     Eye,
     Pencil,
+    Plane,
 } from "lucide-react";
 
 export const clientColumns = [
@@ -103,6 +104,11 @@ export const clientColumns = [
                         onClick={() => window.open(`/edit-awb/${trackingNumber}`)}
                     >
                         <Pencil className="w-[20px] h-[20px]" />
+                    </Button>
+                    <Button
+                        onClick={() => window.open(`/shipping-invoice/${trackingNumber}`)}
+                    >
+                        <Plane className="w-5 h-5" />
                     </Button>
                 </div>
             );

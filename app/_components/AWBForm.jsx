@@ -1,7 +1,4 @@
 "use client"
-
-import React from "react"
-
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { format } from "date-fns"
 import { CalendarIcon, Plus, Minus, Trash2, Search } from "lucide-react"
@@ -26,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import HsnSearchDialog from "./HsnSearchDialog"
 
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
@@ -37,6 +35,8 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [searchTerm, setSearchTerm] = useState("")
   const [searchType, setSearchType] = useState(null)
   const [showSearchDialog, setShowSearchDialog] = useState(false)
+  const [showHsnSearchDialog, setShowHsnSearchDialog] = useState(false)
+  const [currentItemIndex, setCurrentItemIndex] = useState({ boxIndex: 0, itemIndex: 0 })
 
   // Form state
   const [date, setDate] = useState(awb?.date || Date.now())
@@ -44,6 +44,11 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [staffId, setStaffId] = useState(awb?.staffId || "")
   const [invoiceNumber, setInvoiceNumber] = useState(awb?.invoiceNumber || "")
   const [trackingNumber, setTrackingNumber] = useState(awb?.trackingNumber || "")
+  const [via, setVia] = useState("Air Shipment")
+
+  //Forwarding Details
+  const [forwardingNo, setForwardingNo] = useState("")
+  const [forwardingLink, setForwardingLink] = useState("")
 
   // Sender details
   const [senderName, setSenderName] = useState(awb?.sender?.name || "")
@@ -72,7 +77,7 @@ export default function AWBForm({ isEdit = false, awb }) {
         actualWeight: "",
         dimensionalWeight: "",
         chargeableWeight: "",
-        items: [{ name: "", quantity: "", price: "" }],
+        items: [{ name: "", quantity: "", price: "", hsnCode: "" }],
       },
     ],
   )
@@ -169,7 +174,7 @@ export default function AWBForm({ isEdit = false, awb }) {
         actualWeight: "",
         dimensionalWeight: "",
         chargeableWeight: "",
-        items: [{ name: "", quantity: "", price: "" }],
+        items: [{ name: "", quantity: "", price: "", hsnCode: "" }],
       },
     ])
   }, [])
@@ -208,7 +213,7 @@ export default function AWBForm({ isEdit = false, awb }) {
       const updatedBoxes = [...prevBoxes]
       updatedBoxes[boxIndex] = {
         ...updatedBoxes[boxIndex],
-        items: [...updatedBoxes[boxIndex].items, { name: "", quantity: "", price: "" }],
+        items: [...updatedBoxes[boxIndex].items, { name: "", quantity: "", price: "", hsnCode: "" }],
       }
       return updatedBoxes
     })
@@ -237,6 +242,38 @@ export default function AWBForm({ isEdit = false, awb }) {
       return updatedBoxes
     })
   }, [])
+
+  // HSN search functions
+  const openHsnSearch = (boxIndex, itemIndex) => {
+    setCurrentItemIndex({ boxIndex, itemIndex })
+    setShowHsnSearchDialog(true)
+  }
+
+  const handleSelectHsn = (hsnItem) => {
+    const { boxIndex, itemIndex } = currentItemIndex
+
+    setBoxes((prevBoxes) => {
+      const updatedBoxes = [...prevBoxes]
+      const currentItem = updatedBoxes[boxIndex].items[itemIndex]
+
+      // If the item name is empty, fill it with the HSN item name
+      if (!currentItem.name) {
+        updatedBoxes[boxIndex].items[itemIndex] = {
+          ...currentItem,
+          name: hsnItem.item,
+          hsnCode: hsnItem.code,
+        }
+      } else {
+        // Otherwise just update the HSN code
+        updatedBoxes[boxIndex].items[itemIndex] = {
+          ...currentItem,
+          hsnCode: hsnItem.code,
+        }
+      }
+
+      return updatedBoxes
+    })
+  }
 
   // Search functions
   const openSearch = (type) => {
@@ -269,6 +306,9 @@ export default function AWBForm({ isEdit = false, awb }) {
         invoiceNumber,
         date,
         trackingNumber,
+        via,
+        forwardingNo,
+        forwardingLink,
         sender: {
           name: senderName,
           address: senderAddress,
@@ -322,12 +362,12 @@ export default function AWBForm({ isEdit = false, awb }) {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="invoiceNumber">Invoice No:</Label>
+              <Label htmlFor="invoiceNumber">Sr No:</Label>
               <Input id="invoiceNumber" type="text" placeholder="Invoice No." value={invoiceNumber} readOnly />
             </div>
             <div className="space-y-2">
               <Label htmlFor="trackingNumber">Tracking No:</Label>
-              <Input id="trackingNumber" type="number" placeholder="Tracking No." value={trackingNumber} readOnly />
+              <Input id="trackingNumber" type="number" placeholder="Tracking No." value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Date</Label>
@@ -363,6 +403,42 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Via</Label>
+              <Select value={via} onValueChange={setVia}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Via" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Air Shipment">Air Shipment</SelectItem>
+                  <SelectItem value="Cargo">Cargo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {isEdit && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="forwardingNo">Forwarding No:</Label>
+                  <Input
+                    id="forwardingNo"
+                    type="text"
+                    placeholder="Forwarding No."
+                    value={forwardingNo}
+                    onChange={(e) => setForwardingNo(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="forwardingLink">Forwarding Link:</Label>
+                  <Input
+                    id="forwardingLink"
+                    type="text"
+                    placeholder="Forwarding Link."
+                    value={forwardingLink}
+                    onChange={(e) => setForwardingLink(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -657,7 +733,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                           )}
                         </CardHeader>
                         <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div className="space-y-2">
                               <Label htmlFor={`itemName-${boxIndex}-${itemIndex}`}>Name*</Label>
                               <Input
@@ -690,6 +766,28 @@ export default function AWBForm({ isEdit = false, awb }) {
                                 onChange={(e) => handleItemChange(boxIndex, itemIndex, "price", e.target.value)}
                                 required
                               />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`hsnCode-${boxIndex}-${itemIndex}`}>HSN Code</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  id={`hsnCode-${boxIndex}-${itemIndex}`}
+                                  type="text"
+                                  placeholder="HSN Code"
+                                  value={item.hsnCode || ""}
+                                  onChange={(e) => handleItemChange(boxIndex, itemIndex, "hsnCode", e.target.value)}
+                                  readOnly
+                                  className="flex-1"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => openHsnSearch(boxIndex, itemIndex)}
+                                >
+                                  <Search className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </CardContent>
@@ -794,6 +892,9 @@ export default function AWBForm({ isEdit = false, awb }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* HSN Search Dialog */}
+      <HsnSearchDialog open={showHsnSearchDialog} onOpenChange={setShowHsnSearchDialog} onSelect={handleSelectHsn} />
     </div>
   )
 }
