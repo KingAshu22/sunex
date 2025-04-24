@@ -24,7 +24,7 @@ export default function ItemNameAutocomplete({ value, onChange, onHsnSelect, id,
     // Search for HSN codes when search term changes
     useEffect(() => {
         const searchHsn = async () => {
-            if (searchTerm.length < 4) {
+            if (searchTerm.length < 2) {
                 setResults([])
                 return
             }
