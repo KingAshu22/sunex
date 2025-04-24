@@ -209,8 +209,8 @@ export default function AWBForm({ isEdit = false, awb }) {
         // Check for Document type and actualWeight > 2
         if (field === "actualWeight" && shipmentType === "Document") {
           const numericWeight = Number.parseFloat(value)
-          if (numericWeight > 2) {
-            toast.error("For Document shipment, actual weight cannot exceed 2 kg.")
+          if (numericWeight > 3) {
+            toast.error("For Document shipment, actual weight cannot exceed 3 kg.")
             newValue = "" // reset actualWeight
           }
         }
@@ -262,12 +262,23 @@ export default function AWBForm({ isEdit = false, awb }) {
   }, [])
 
   useEffect(() => {
-    if (shipmentType === "Document") {
-      handleItemChange(0, 0, "name", "Document")
-      handleItemChange(0, 0, "price", 10)
-      handleItemChange(0, 0, "hsnCode", "482030")
+    if (
+      shipmentType === "Document" &&
+      boxes.length > 0 &&
+      boxes[0]?.items?.length > 0
+    ) {
+      const item = boxes[0].items[0]
+      if (
+        item.name !== "Document" ||
+        item.price !== 10 ||
+        item.hsnCode !== "482030"
+      ) {
+        handleItemChange(0, 0, "name", "Document")
+        handleItemChange(0, 0, "price", 10)
+        handleItemChange(0, 0, "hsnCode", "482030")
+      }
     }
-  }, [shipmentType])
+  }, [shipmentType, boxes])
 
   const handleItemChange = useCallback((boxIndex, itemIndex, field, value) => {
     setBoxes((prevBoxes) => {

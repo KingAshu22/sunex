@@ -13,6 +13,7 @@ export default function ShippingInvoicePage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
     const printableAreaRef = useRef(null)
+    const [copies, setCopies] = useState(1)
 
     useEffect(() => {
         const fetchAWBData = async () => {
@@ -37,6 +38,16 @@ export default function ShippingInvoicePage() {
         const printContent = printableAreaRef.current.innerHTML
         const originalContent = document.body.innerHTML
 
+        // Create multiple copies based on the copies state
+        let allCopies = ""
+        for (let i = 0; i < copies; i++) {
+            allCopies += `<div id="printableArea" class="printableArea" style="${i > 0 ? "margin-top: 5mm;" : ""}">${printContent}</div>`
+            // Don't add page break after the last copy
+            if (i < copies - 1) {
+                allCopies += '<div style="page-break-after: always;"></div>'
+            }
+        }
+
         document.body.innerHTML = `
             <style>
                 @page {
@@ -51,8 +62,12 @@ export default function ShippingInvoicePage() {
                     padding: 1%;
                     width: 95%;
                     font-family: Arial, sans-serif;
+                }
+                .printableArea {
                     border: 1px solid grey;
                     border-radius: 16px;
+                    margin-bottom: 20px;
+                    padding: 1%;
                 }
                 table {
                     width: 100%;
@@ -99,7 +114,7 @@ export default function ShippingInvoicePage() {
                     text-align: center;
                 }
             </style>
-            <div>${printContent}</div>
+            ${allCopies}
         `
 
         window.print()
@@ -221,10 +236,25 @@ export default function ShippingInvoicePage() {
             <div className="container mx-auto px-2 py-1 bg-white">
                 <div className="mb-6 flex justify-between items-center">
                     <h1 className="text-2xl font-bold text-[#232C65]">Shipping Invoice</h1>
-                    <Button onClick={handlePrint} className="flex items-center gap-2 bg-[#232C65] hover:bg-[#1a2150]">
-                        <Printer className="h-4 w-4" />
-                        Print Invoice
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <label htmlFor="copies" className="text-sm font-medium">
+                                Copies:
+                            </label>
+                            <input
+                                id="copies"
+                                type="number"
+                                min="1"
+                                value={copies}
+                                onChange={(e) => setCopies(Math.max(1, Number.parseInt(e.target.value) || 1))}
+                                className="w-16 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            />
+                        </div>
+                        <Button onClick={handlePrint} className="flex items-center gap-2 bg-[#232C65] hover:bg-[#1a2150]">
+                            <Printer className="h-4 w-4" />
+                            Print Invoice
+                        </Button>
+                    </div>
                 </div>
 
                 <div
@@ -338,7 +368,8 @@ export default function ShippingInvoicePage() {
                                                 ₹{item.price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="border border-gray-300 px-2 w-[40px] whitespace-nowrap">
-                                                ₹{(Number(item.price) * Number(item.quantity)).toLocaleString("en-IN", {
+                                                ₹
+                                                {(Number(item.price) * Number(item.quantity)).toLocaleString("en-IN", {
                                                     minimumFractionDigits: 2,
                                                     maximumFractionDigits: 2,
                                                 })}
