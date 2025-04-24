@@ -25,6 +25,8 @@ import {
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import HsnSearchDialog from "./HsnSearchDialog"
 import toast from "react-hot-toast"
+import { Checkbox } from "@/components/ui/checkbox"
+import ItemNameAutocomplete from "./ItemNameAutoComplete"
 
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
@@ -38,6 +40,8 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [showSearchDialog, setShowSearchDialog] = useState(false)
   const [showHsnSearchDialog, setShowHsnSearchDialog] = useState(false)
   const [currentItemIndex, setCurrentItemIndex] = useState({ boxIndex: 0, itemIndex: 0 })
+  const [boxCount, setBoxCount] = useState("")
+  const [showItemDetails, setShowItemDetails] = useState(false)
 
   // Form state
   const [date, setDate] = useState(awb?.date || Date.now())
@@ -46,7 +50,7 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [invoiceNumber, setInvoiceNumber] = useState(awb?.invoiceNumber || "")
   const [trackingNumber, setTrackingNumber] = useState(awb?.trackingNumber || "")
   const [via, setVia] = useState("Air Shipment")
-  const [shipmentType, setShipmentType] = useState("Non Document");
+  const [shipmentType, setShipmentType] = useState("Non Document")
 
   //Forwarding Details
   const [forwardingNo, setForwardingNo] = useState("")
@@ -70,9 +74,22 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [receiverContact, setReceiverContact] = useState(awb?.receiver?.contact || "")
 
   // Box details
-  const [boxes, setBoxes] = useState(
-    awb?.boxes || [
-      {
+  const [boxes, setBoxes] = useState(awb?.boxes || [])
+
+  // Derived state
+  const [totalChargeableWeight, setTotalChargeableWeight] = useState("")
+
+  // Generate boxes based on user input
+  const generateBoxes = () => {
+    const count = Number.parseInt(boxCount, 10)
+    if (isNaN(count) || count <= 0) {
+      toast.error("Please enter a valid number of boxes")
+      return
+    }
+
+    const newBoxes = []
+    for (let i = 0; i < count; i++) {
+      newBoxes.push({
         length: "",
         breadth: "",
         height: "",
@@ -80,12 +97,10 @@ export default function AWBForm({ isEdit = false, awb }) {
         dimensionalWeight: "",
         chargeableWeight: "",
         items: [{ name: "", quantity: "", price: "", hsnCode: "" }],
-      },
-    ],
-  )
-
-  // Derived state
-  const [totalChargeableWeight, setTotalChargeableWeight] = useState("")
+      })
+    }
+    setBoxes(newBoxes)
+  }
 
   // Filtered customers for search
   const filteredCustomers = useMemo(() => {
@@ -185,40 +200,43 @@ export default function AWBForm({ isEdit = false, awb }) {
     setBoxes((prevBoxes) => prevBoxes.filter((_, index) => index !== boxIndex))
   }, [])
 
-  const handleBoxChange = useCallback((index, field, value) => {
-    setBoxes((prevBoxes) => {
-      const updatedBoxes = [...prevBoxes]
-      let newValue = value
+  const handleBoxChange = useCallback(
+    (index, field, value) => {
+      setBoxes((prevBoxes) => {
+        const updatedBoxes = [...prevBoxes]
+        let newValue = value
 
-      // Check for Document type and actualWeight > 2
-      if (field === "actualWeight" && shipmentType === "Document") {
-        const numericWeight = parseFloat(value)
-        if (numericWeight > 2) {
-          toast.error("For Document shipment, actual weight cannot exceed 2 kg.")
-          newValue = ""// reset actualWeight
+        // Check for Document type and actualWeight > 2
+        if (field === "actualWeight" && shipmentType === "Document") {
+          const numericWeight = Number.parseFloat(value)
+          if (numericWeight > 2) {
+            toast.error("For Document shipment, actual weight cannot exceed 2 kg.")
+            newValue = "" // reset actualWeight
+          }
         }
-      }
 
-      updatedBoxes[index] = { ...updatedBoxes[index], [field]: newValue }
+        updatedBoxes[index] = { ...updatedBoxes[index], [field]: newValue }
 
-      // Recalculate weights if dimension or actual weight changes
-      if (["length", "breadth", "height", "actualWeight"].includes(field)) {
-        const box = updatedBoxes[index]
-        const length = Number(box.length) || 0
-        const breadth = Number(box.breadth) || 0
-        const height = Number(box.height) || 0
-        const actualWeight = Number(box.actualWeight) || 0
+        // Recalculate weights if dimension or actual weight changes
+        if (["length", "breadth", "height", "actualWeight"].includes(field)) {
+          const box = updatedBoxes[index]
+          const length = Number(box.length) || 0
+          const breadth = Number(box.breadth) || 0
+          const height = Number(box.height) || 0
+          const actualWeight = Number(box.actualWeight) || 0
 
-        const dimensionalWeight = Math.round((length * breadth * height) / 5000)
-        const chargeableWeight = Math.max(actualWeight, dimensionalWeight)
+          const dimensionalWeight = Math.round((length * breadth * height) / 5000)
+          const chargeableWeight = Math.max(actualWeight, dimensionalWeight)
 
-        updatedBoxes[index].dimensionalWeight = dimensionalWeight
-        updatedBoxes[index].chargeableWeight = chargeableWeight
-      }
+          updatedBoxes[index].dimensionalWeight = dimensionalWeight
+          updatedBoxes[index].chargeableWeight = chargeableWeight
+        }
 
-      return updatedBoxes
-    })
-  }, [shipmentType])
+        return updatedBoxes
+      })
+    },
+    [shipmentType],
+  )
 
   // Item management functions
   const addItem = useCallback((boxIndex) => {
@@ -245,9 +263,9 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   useEffect(() => {
     if (shipmentType === "Document") {
-      handleItemChange(0, 0, "name", "Document");
-      handleItemChange(0, 0, "price", 10);
-      handleItemChange(0, 0, "hsnCode", "482030");
+      handleItemChange(0, 0, "name", "Document")
+      handleItemChange(0, 0, "price", 10)
+      handleItemChange(0, 0, "hsnCode", "482030")
     }
   }, [shipmentType])
 
@@ -373,11 +391,11 @@ export default function AWBForm({ isEdit = false, awb }) {
       if (response.status === 200) {
         setSuccess(true)
       } else {
-        alert(`Failed to ${isEdit ? "update" : "save"} the parcel. Please try again.`)
+        toast.error(`Failed to ${isEdit ? "update" : "save"} the parcel. Please try again.`)
       }
     } catch (error) {
       console.error(`Error ${isEdit ? "updating" : "saving"} parcel:`, error)
-      alert(`An error occurred while ${isEdit ? "updating" : "saving"} the parcel.`)
+      toast.error(`An error occurred while ${isEdit ? "updating" : "saving"} the parcel.`)
     } finally {
       setLoading(false)
     }
@@ -400,7 +418,13 @@ export default function AWBForm({ isEdit = false, awb }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="trackingNumber">Tracking No:</Label>
-              <Input id="trackingNumber" type="number" placeholder="Tracking No." value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} />
+              <Input
+                id="trackingNumber"
+                type="number"
+                placeholder="Tracking No."
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Date</Label>
@@ -679,185 +703,250 @@ export default function AWBForm({ isEdit = false, awb }) {
             <div className="text-sm font-medium">Total Chargeable Weight: {totalChargeableWeight} kg</div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {boxes.map((box, boxIndex) => (
-              <Card key={boxIndex} className="border border-gray-200">
-                <CardHeader className="flex flex-row items-center justify-between py-3">
-                  <CardTitle className="text-xl text-[#232C65]">Box {boxIndex + 1}</CardTitle>
-                  {boxIndex > 0 && (
-                    <Button type="button" variant="destructive" size="sm" onClick={() => removeBox(boxIndex)}>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Remove Box
-                    </Button>
-                  )}
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor={`length-${boxIndex}`}>Length (cm)*</Label>
-                      <Input
-                        id={`length-${boxIndex}`}
-                        type="number"
-                        placeholder="Length (cm)"
-                        value={box.length || ""}
-                        onChange={(e) => handleBoxChange(boxIndex, "length", Number.parseFloat(e.target.value) || "")}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`breadth-${boxIndex}`}>Breadth (cm)*</Label>
-                      <Input
-                        id={`breadth-${boxIndex}`}
-                        type="number"
-                        placeholder="Breadth (cm)"
-                        value={box.breadth || ""}
-                        onChange={(e) => handleBoxChange(boxIndex, "breadth", Number.parseFloat(e.target.value) || "")}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`height-${boxIndex}`}>Height (cm)*</Label>
-                      <Input
-                        id={`height-${boxIndex}`}
-                        type="number"
-                        placeholder="Height (cm)"
-                        value={box.height || ""}
-                        onChange={(e) => handleBoxChange(boxIndex, "height", Number.parseFloat(e.target.value) || "")}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`actualWeight-${boxIndex}`}>Actual Weight (kg)*</Label>
-                      <Input
-                        id={`actualWeight-${boxIndex}`}
-                        type="number"
-                        placeholder="Actual Weight (kg)"
-                        value={box.actualWeight || ""}
-                        onChange={(e) =>
-                          handleBoxChange(boxIndex, "actualWeight", Number.parseFloat(e.target.value) || "")
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`dimensionalWeight-${boxIndex}`}>Dimensional Weight (kg)</Label>
-                      <Input
-                        id={`dimensionalWeight-${boxIndex}`}
-                        type="number"
-                        placeholder="Dimensional Weight (kg)"
-                        value={box.dimensionalWeight || ""}
-                        readOnly
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`chargeableWeight-${boxIndex}`}>Chargeable Weight (kg)</Label>
-                      <Input
-                        id={`chargeableWeight-${boxIndex}`}
-                        type="number"
-                        placeholder="Chargeable Weight (kg)"
-                        value={box.chargeableWeight || ""}
-                        readOnly
-                      />
-                    </div>
-                  </div>
+            {/* Box Count Input */}
+            <div className="flex items-end gap-4">
+              <div className="space-y-2 flex-1">
+                <Label htmlFor="boxCount">How many boxes do you want?</Label>
+                <Input
+                  id="boxCount"
+                  type="number"
+                  placeholder="Enter number of boxes"
+                  value={boxCount}
+                  onChange={(e) => setBoxCount(e.target.value)}
+                />
+              </div>
+              <Button type="button" onClick={generateBoxes} className="mb-0.5">
+                Generate Boxes
+              </Button>
+            </div>
 
-                  {/* Items */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-[#232C65]">Items</h3>
-                    {box.items.map((item, itemIndex) => (
-                      <Card key={itemIndex} className="border border-gray-100">
-                        <CardHeader className="flex flex-row items-center justify-between py-2">
-                          <CardTitle className="text-lg text-[#232C65]">Item {itemIndex + 1}</CardTitle>
-                          {itemIndex > 0 && (
+            {/* Box List */}
+            {boxes.length > 0 ? (
+              <div className="space-y-6">
+                {boxes.map((box, boxIndex) => (
+                  <Card key={boxIndex} className="border border-gray-200">
+                    <CardHeader className="flex flex-row items-center justify-between py-3">
+                      <CardTitle className="text-xl text-[#232C65]">Box {boxIndex + 1}</CardTitle>
+                      {boxIndex > 0 && (
+                        <Button type="button" variant="destructive" size="sm" onClick={() => removeBox(boxIndex)}>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remove Box
+                        </Button>
+                      )}
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Basic Box Details */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor={`length-${boxIndex}`}>Length (cm)*</Label>
+                          <Input
+                            id={`length-${boxIndex}`}
+                            type="number"
+                            placeholder="Length (cm)"
+                            value={box.length || ""}
+                            onChange={(e) =>
+                              handleBoxChange(boxIndex, "length", Number.parseFloat(e.target.value) || "")
+                            }
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`breadth-${boxIndex}`}>Breadth (cm)*</Label>
+                          <Input
+                            id={`breadth-${boxIndex}`}
+                            type="number"
+                            placeholder="Breadth (cm)"
+                            value={box.breadth || ""}
+                            onChange={(e) =>
+                              handleBoxChange(boxIndex, "breadth", Number.parseFloat(e.target.value) || "")
+                            }
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`height-${boxIndex}`}>Height (cm)*</Label>
+                          <Input
+                            id={`height-${boxIndex}`}
+                            type="number"
+                            placeholder="Height (cm)"
+                            value={box.height || ""}
+                            onChange={(e) =>
+                              handleBoxChange(boxIndex, "height", Number.parseFloat(e.target.value) || "")
+                            }
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`actualWeight-${boxIndex}`}>Actual Weight (kg)*</Label>
+                          <Input
+                            id={`actualWeight-${boxIndex}`}
+                            type="number"
+                            placeholder="Actual Weight (kg)"
+                            value={box.actualWeight || ""}
+                            onChange={(e) =>
+                              handleBoxChange(boxIndex, "actualWeight", Number.parseFloat(e.target.value) || "")
+                            }
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`dimensionalWeight-${boxIndex}`}>Dimensional Weight (kg)</Label>
+                          <Input
+                            id={`dimensionalWeight-${boxIndex}`}
+                            type="number"
+                            placeholder="Dimensional Weight (kg)"
+                            value={box.dimensionalWeight || ""}
+                            readOnly
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`chargeableWeight-${boxIndex}`}>Chargeable Weight (kg)</Label>
+                          <Input
+                            id={`chargeableWeight-${boxIndex}`}
+                            type="number"
+                            placeholder="Chargeable Weight (kg)"
+                            value={box.chargeableWeight || ""}
+                            readOnly
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Enter the number of boxes and click "Generate Boxes" to start
+              </div>
+            )}
+
+            {/* Shipping Invoice Option */}
+            {boxes.length > 0 && (
+              <div className="pt-4 border-t">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Checkbox id="createShippingInvoice" checked={showItemDetails} onCheckedChange={setShowItemDetails} />
+                  <Label htmlFor="createShippingInvoice" className="font-medium">
+                    Do you want to create Shipping Invoice?
+                  </Label>
+                </div>
+
+                {showItemDetails && (
+                  <div className="space-y-6 mt-4">
+                    {boxes.map((box, boxIndex) => (
+                      <Card key={`items-${boxIndex}`} className="border border-gray-200">
+                        <CardHeader className="py-3">
+                          <CardTitle className="text-xl text-[#232C65]">Box {boxIndex + 1} Items</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {/* Items */}
+                          <div className="space-y-4">
+                            {box.items.map((item, itemIndex) => (
+                              <Card key={itemIndex} className="border border-gray-100">
+                                <CardHeader className="flex flex-row items-center justify-between py-2">
+                                  <CardTitle className="text-lg text-[#232C65]">Item {itemIndex + 1}</CardTitle>
+                                  {itemIndex > 0 && (
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => removeItem(boxIndex, itemIndex)}
+                                    >
+                                      <Minus className="h-4 w-4 mr-2" />
+                                      Remove Item
+                                    </Button>
+                                  )}
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                    {/* Item Name - Take more space */}
+                                    <div className="space-y-2 md:col-span-6">
+                                      <Label htmlFor={`itemName-${boxIndex}-${itemIndex}`}>Name*</Label>
+                                      <ItemNameAutocomplete
+                                        id={`itemName-${boxIndex}-${itemIndex}`}
+                                        value={item.name || ""}
+                                        onChange={(value) => handleItemChange(boxIndex, itemIndex, "name", value)}
+                                        onHsnSelect={(hsnItem) => {
+                                          handleItemChange(boxIndex, itemIndex, "hsnCode", hsnItem.code)
+                                        }}
+                                        required={showItemDetails}
+                                      />
+                                    </div>
+
+                                    {/* Quantity */}
+                                    <div className="space-y-2 md:col-span-2">
+                                      <Label htmlFor={`itemQuantity-${boxIndex}-${itemIndex}`}>Quantity*</Label>
+                                      <Input
+                                        id={`itemQuantity-${boxIndex}-${itemIndex}`}
+                                        type="number"
+                                        placeholder="Quantity"
+                                        value={item.quantity || ""}
+                                        onChange={(e) =>
+                                          handleItemChange(boxIndex, itemIndex, "quantity", e.target.value)
+                                        }
+                                        required={showItemDetails}
+                                      />
+                                    </div>
+
+                                    {/* Price */}
+                                    <div className="space-y-2 md:col-span-2">
+                                      <Label htmlFor={`itemPrice-${boxIndex}-${itemIndex}`}>Price*</Label>
+                                      <Input
+                                        id={`itemPrice-${boxIndex}-${itemIndex}`}
+                                        type="number"
+                                        placeholder="Price"
+                                        value={item.price || ""}
+                                        onChange={(e) => handleItemChange(boxIndex, itemIndex, "price", e.target.value)}
+                                        required={showItemDetails}
+                                      />
+                                    </div>
+
+                                    {/* HSN Code */}
+                                    <div className="space-y-2 md:col-span-2">
+                                      <Label htmlFor={`hsnCode-${boxIndex}-${itemIndex}`}>HSN Code</Label>
+                                      <div className="flex gap-2">
+                                        <Input
+                                          id={`hsnCode-${boxIndex}-${itemIndex}`}
+                                          type="text"
+                                          placeholder="HSN Code"
+                                          value={item.hsnCode || ""}
+                                          onChange={(e) =>
+                                            handleItemChange(boxIndex, itemIndex, "hsnCode", e.target.value)
+                                          }
+                                          readOnly
+                                          className="flex-1"
+                                        />
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="icon"
+                                          onClick={() => openHsnSearch(boxIndex, itemIndex)}
+                                        >
+                                          <Search className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
                             <Button
                               type="button"
-                              variant="destructive"
+                              variant="outline"
                               size="sm"
-                              onClick={() => removeItem(boxIndex, itemIndex)}
+                              onClick={() => addItem(boxIndex)}
+                              className="mt-2"
                             >
-                              <Minus className="h-4 w-4 mr-2" />
-                              Remove Item
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Item
                             </Button>
-                          )}
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor={`itemName-${boxIndex}-${itemIndex}`}>Name*</Label>
-                              <Input
-                                id={`itemName-${boxIndex}-${itemIndex}`}
-                                type="text"
-                                placeholder="Item Name"
-                                value={item.name || ""}
-                                onChange={(e) => handleItemChange(boxIndex, itemIndex, "name", e.target.value)}
-                                required
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor={`itemQuantity-${boxIndex}-${itemIndex}`}>Quantity*</Label>
-                              <Input
-                                id={`itemQuantity-${boxIndex}-${itemIndex}`}
-                                type="number"
-                                placeholder="Quantity"
-                                value={item.quantity || ""}
-                                onChange={(e) => handleItemChange(boxIndex, itemIndex, "quantity", e.target.value)}
-                                required
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor={`itemPrice-${boxIndex}-${itemIndex}`}>Price*</Label>
-                              <Input
-                                id={`itemPrice-${boxIndex}-${itemIndex}`}
-                                type="number"
-                                placeholder="Price"
-                                value={item.price || ""}
-                                onChange={(e) => handleItemChange(boxIndex, itemIndex, "price", e.target.value)}
-                                required
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor={`hsnCode-${boxIndex}-${itemIndex}`}>HSN Code</Label>
-                              <div className="flex gap-2">
-                                <Input
-                                  id={`hsnCode-${boxIndex}-${itemIndex}`}
-                                  type="text"
-                                  placeholder="HSN Code"
-                                  value={item.hsnCode || ""}
-                                  onChange={(e) => handleItemChange(boxIndex, itemIndex, "hsnCode", e.target.value)}
-                                  readOnly
-                                  className="flex-1"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon"
-                                  onClick={() => openHsnSearch(boxIndex, itemIndex)}
-                                >
-                                  <Search className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
                           </div>
                         </CardContent>
                       </Card>
                     ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addItem(boxIndex)}
-                      className="mt-2"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Item
-                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-            <Button type="button" variant="outline" onClick={addBox} className="mt-4">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Box
-            </Button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
