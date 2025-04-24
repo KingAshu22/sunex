@@ -6,6 +6,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "../_components/Sidebar";
 import { usePathname } from "next/navigation"; // Import the hook to get the current path
 import Header from "../_components/Header";
+import { Toaster } from "react-hot-toast";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,16 +21,16 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={inter.className}>
+        <Toaster />
         <SidebarProvider>
           {!isAWBPage && <AppSidebar />}{" "}
           {/* Only render the sidebar if it's not the AWB page */}
           <main
-            className={`flex-grow ${
-              pathname !== "/" ||
+            className={`flex-grow ${pathname !== "/" ||
               (pathname.includes("/track") &&
                 !pathname.includes("/signin") &&
                 "p-4")
-            }`}
+              }`}
           >
             {!isAWBPage && (
               <div className="mb-20">

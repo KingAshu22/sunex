@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import HsnSearchDialog from "./HsnSearchDialog"
+import toast from "react-hot-toast"
 
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
@@ -187,7 +188,18 @@ export default function AWBForm({ isEdit = false, awb }) {
   const handleBoxChange = useCallback((index, field, value) => {
     setBoxes((prevBoxes) => {
       const updatedBoxes = [...prevBoxes]
-      updatedBoxes[index] = { ...updatedBoxes[index], [field]: value }
+      let newValue = value
+
+      // Check for Document type and actualWeight > 2
+      if (field === "actualWeight" && shipmentType === "Document") {
+        const numericWeight = parseFloat(value)
+        if (numericWeight > 2) {
+          toast.error("For Document shipment, actual weight cannot exceed 2 kg.")
+          newValue = ""// reset actualWeight
+        }
+      }
+
+      updatedBoxes[index] = { ...updatedBoxes[index], [field]: newValue }
 
       // Recalculate weights if dimension or actual weight changes
       if (["length", "breadth", "height", "actualWeight"].includes(field)) {
@@ -206,7 +218,7 @@ export default function AWBForm({ isEdit = false, awb }) {
 
       return updatedBoxes
     })
-  }, [])
+  }, [shipmentType])
 
   // Item management functions
   const addItem = useCallback((boxIndex) => {
@@ -230,6 +242,14 @@ export default function AWBForm({ isEdit = false, awb }) {
       return updatedBoxes
     })
   }, [])
+
+  useEffect(() => {
+    if (shipmentType === "Document") {
+      handleItemChange(0, 0, "name", "Document");
+      handleItemChange(0, 0, "price", 10);
+      handleItemChange(0, 0, "hsnCode", "482030");
+    }
+  }, [shipmentType])
 
   const handleItemChange = useCallback((boxIndex, itemIndex, field, value) => {
     setBoxes((prevBoxes) => {
