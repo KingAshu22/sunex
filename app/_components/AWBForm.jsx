@@ -45,6 +45,7 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [invoiceNumber, setInvoiceNumber] = useState(awb?.invoiceNumber || "")
   const [trackingNumber, setTrackingNumber] = useState(awb?.trackingNumber || "")
   const [via, setVia] = useState("Air Shipment")
+  const [shipmentType, setShipmentType] = useState("Non Document");
 
   //Forwarding Details
   const [forwardingNo, setForwardingNo] = useState("")
@@ -307,6 +308,7 @@ export default function AWBForm({ isEdit = false, awb }) {
         date,
         trackingNumber,
         via,
+        shipmentType,
         forwardingNo,
         forwardingLink,
         sender: {
@@ -331,6 +333,17 @@ export default function AWBForm({ isEdit = false, awb }) {
           owner: localStorage.getItem("id"),
         },
         boxes,
+        ...(isEdit
+          ? {}
+          : {
+            parcelStatus: [
+              {
+                status: "Shipment AWB Prepared - BOM HUB",
+                timestamp: new Date(),
+                comment: "",
+              },
+            ],
+          }),
       }
 
       const response = isEdit
@@ -412,6 +425,20 @@ export default function AWBForm({ isEdit = false, awb }) {
                 <SelectContent>
                   <SelectItem value="Air Shipment">Air Shipment</SelectItem>
                   <SelectItem value="Cargo">Cargo</SelectItem>
+                  <SelectItem value="Roadways">Roadways</SelectItem>
+                  <SelectItem value="Railways">Railways</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Shipment Type</Label>
+              <Select value={shipmentType} onValueChange={setShipmentType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Shipment Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Document">Document</SelectItem>
+                  <SelectItem value="Non Document">Non Document</SelectItem>
                 </SelectContent>
               </Select>
             </div>

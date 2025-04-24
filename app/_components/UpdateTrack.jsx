@@ -27,10 +27,9 @@ import axios from "axios";
 import Modal from "./Modal";
 
 const statusOptions = [
-  "Shipment AWB Prepared - HYD HUB",
-  "Scanned at Origin - Hyderabad HUB",
-  "In Transit from Hyd HUB",
-  "Scanned at Mumbai HUB",
+  "Shipment AWB Prepared - BOM HUB",
+  "Scanned at Origin - BOM HUB",
+  "In Transit from BOM HUB", ,
   "Under Clearance- Export- BOM Airport",
   "Cleared Export Clearance - BOM Airport",
   "In Transit from BOM Airport",

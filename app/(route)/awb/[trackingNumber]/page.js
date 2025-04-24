@@ -220,52 +220,6 @@ export default function AWBView({ params }) {
               />
             </div>
           </div>
-
-          <div>
-            <h2 className="text-xs font-semibold text-[#232C65] mb-2">
-              Package Information
-            </h2>
-            <div className="overflow-x-auto h-[405px]">
-              <table className="min-w-full divide-y divide-gray-200 text-xs">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {[
-                      "Box No",
-                      "Dimensions (L×B×H)",
-                      "Actual Weight",
-                      "Dim. Weight",
-                      "Chargeable Weight",
-                    ]?.map((header) => (
-                      <th
-                        key={header}
-                        className="px-1 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {awbData?.boxes?.map((box, index) => {
-                    const boxTotal = box.items?.reduce((total, item) => {
-                      return total + item.quantity * item.price;
-                    }, 0);
-
-                    return (
-                      <tr key={index}>
-                        <td className="px-8 py-2 whitespace-nowrap">{`${index + 1
-                          }`}</td>
-                        <td className="px-8 py-2 whitespace-nowrap">{`${box.length}×${box.breadth}×${box.height}`}</td>
-                        <td className="px-8 py-2 whitespace-nowrap">{`${box.actualWeight} kg`}</td>
-                        <td className="px-8 py-2 whitespace-nowrap">{`${box.dimensionalWeight} kg`}</td>
-                        <td className="px-8 py-2 whitespace-nowrap">{`${box.chargeableWeight} kg`}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
 
         <div className="text-xs px-2">
