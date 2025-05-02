@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowUpDown, Eye, LayoutDashboard, Pencil, Trash, Plane } from "lucide-react";
+import { ArrowUpDown, Eye, LayoutDashboard, Pencil, Trash, Plane, Barcode } from "lucide-react";
 import { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -146,6 +146,11 @@ export const adminColumns = [
             onClick={() => window.open(`/shipping-invoice/${trackingNumber}`)}
           >
             <Plane className="w-5 h-5" />
+          </Button>
+          <Button
+            onClick={() => window.open(`/label/${trackingNumber}`)}
+          >
+            <Barcode className="w-5 h-5" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger>

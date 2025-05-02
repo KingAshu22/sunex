@@ -127,7 +127,7 @@ export const columns = [
         <div className="flex flex-rows gap-2">
           <Button
             className="px-2 py-1 bg-blue-800"
-            onClick={() => window.open(`/customers/edit/${code}`)}
+            onClick={() => window.open(`/customers/edit/${_id}`)}
           >
             <Pencil className="w-[20px] h-[20px]" />
           </Button>

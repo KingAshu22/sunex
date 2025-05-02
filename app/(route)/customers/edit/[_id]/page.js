@@ -3,37 +3,37 @@
 import { useState, useEffect, use } from "react";
 import axios from "axios";
 import withAuth from "@/lib/withAuth";
-import ClientRegisterForm from "@/app/_components/ClientForm";
+import CustomerRegistrationForm from "@/app/_components/CustomerForm";
 
-const EditClient = ({ params }) => {
-    const { code } = use(params);
-    console.log("Code: " + code);
+const EditCustomer = ({ params }) => {
+    const { _id } = use(params);
+    console.log("_id: " + _id);
 
-    const [client, setClient] = useState(null);
+    const [customer, setCustomer] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        console.log("Client Data", client);
-    }, [client]);
+        console.log("Customer Data", customer);
+    }, [customer]);
 
     useEffect(() => {
-        const fetchClient = async () => {
-            console.log(`Client fetching data ${code}`);
+        const fetchCustomer = async () => {
+            console.log(`Customer fetching data ${_id}`);
             try {
                 const response = await axios.get(
-                    `/api/clients/${code}`
+                    `/api/customer/${_id}`
                 );
                 const data = response.data;
-                setClient(data[0]);
+                setCustomer(data);
                 setLoading(false);
             } catch (err) {
-                setError("Failed to fetch Client data");
+                setError("Failed to fetch Customer data");
                 setLoading(false);
             }
         };
 
-        fetchClient();
+        fetchCustomer();
     }, []);
 
     if (loading) return <div className="text-center mt-8">Loading...</div>;
@@ -42,9 +42,9 @@ const EditClient = ({ params }) => {
 
     return (
         <div className="min-h-screen flex items-center justify-center">
-            <ClientRegisterForm isEdit={true} client={client} />
+            <CustomerRegistrationForm isEdit={true} customer={customer} />
         </div>
     );
 };
 
-export default withAuth(EditClient);
+export default withAuth(EditCustomer);

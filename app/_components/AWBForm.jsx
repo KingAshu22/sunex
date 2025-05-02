@@ -27,6 +27,7 @@ import HsnSearchDialog from "./HsnSearchDialog"
 import toast from "react-hot-toast"
 import { Checkbox } from "@/components/ui/checkbox"
 import ItemNameAutocomplete from "./ItemNameAutoComplete"
+import PhotoUploader from "./PhotoUploader"
 
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
@@ -64,6 +65,7 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [senderContact, setSenderContact] = useState(awb?.sender?.contact || "")
   const [kycType, setKycType] = useState(awb?.sender?.kyc?.type || "Aadhaar No -")
   const [kyc, setKyc] = useState(awb?.sender?.kyc?.kyc || "")
+  const [kycLink, setKycLink] = useState(awb?.sender?.kyc?.link || "")
   const [gst, setGst] = useState(awb?.gst || "")
 
   // Receiver details
@@ -369,6 +371,7 @@ export default function AWBForm({ isEdit = false, awb }) {
           kyc: {
             type: kycType,
             kyc,
+            link,
           },
           owner: localStorage.getItem("id"),
           gst,
@@ -627,6 +630,11 @@ export default function AWBForm({ isEdit = false, awb }) {
                 required
               />
             </div>
+            {/* <PhotoUploader
+              clientName={senderName}
+              setProfilePic={setKycLink}
+              initialImageLink={kycLink}
+            /> */}
             <div className="space-y-2">
               <Label htmlFor="gst">GST</Label>
               <Input id="gst" type="text" placeholder="GST No" value={gst} onChange={(e) => setGst(e.target.value)} />

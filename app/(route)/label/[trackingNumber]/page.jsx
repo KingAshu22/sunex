@@ -38,121 +38,206 @@ export default function Label() {
     const handlePrint = () => {
         const originalContent = document.body.innerHTML
 
-        // Create labels for each box, 2 per page
-        let allLabels = ""
+        // Determine if we should use a 2-column layout
+        const useDoubleColumn = totalBoxes > 2
+
+        // Create a print-optimized layout
+        let allLabels = `<div class="label-container${useDoubleColumn ? " two-column" : ""}">`
+
         for (let i = 0; i < totalBoxes; i++) {
-            // Add label
             allLabels += `
         <div class="label">
-          <div class="address-section">
-            <h2 class="font-bold mb-2">Receiver:</h2>
-            <p class="font-bold uppercase">${awbData?.receiver?.name || ""}</p>
-            <p>${awbData?.receiver?.address || ""}</p>
-            <p>${awbData?.receiver?.zip || ""}, ${awbData?.receiver?.country || ""}</p>
-            <p>Cont No: ${awbData?.receiver?.contact || ""}</p>
+          <div class="box-number">Box No: ${i + 1}/${totalBoxes}</div>
+          <div class="barcode-container">
+            <svg class="barcode-svg"></svg>
           </div>
-          <div class="barcode-section">
-            <div class="box-number">Box - ${i + 1}/${totalBoxes}</div>
-            <div class="barcode-container">
-              <svg class="barcode-svg"></svg>
-            </div>
+          <div class="address-section">
+            <h2>Receiver:</h2>
+            <p class="name">${awbData?.receiver?.name || ""}</p>
+            <p class="address">${awbData?.receiver?.address || ""}</p>
+            <p class="location">${awbData?.receiver?.zip || ""}, ${awbData?.receiver?.country || ""}</p>
+            <p class="contact">Cont No: ${awbData?.receiver?.contact || ""}</p>
           </div>
         </div>
       `
-
-            // Add page break after every 2 labels (except the last page)
-            if (i % 2 === 1 && i < totalBoxes - 1) {
-                allLabels += '<div class="page-break"></div>'
-            }
         }
+
+        allLabels += `</div>`
 
         document.body.innerHTML = `
-      <style>
-        @page {
-          size: A4;
-          margin: 0.5cm;
-        }
-        body {
-          font-family: Arial, sans-serif;
-          margin: 0;
-          padding: 0;
-        }
-        .label {
-          width: 100%;
-          height: 14cm;
-          border: 1px solid #000;
-          border-radius: 5px;
-          padding: 0.5cm;
-          margin-bottom: 0.5cm;
-          display: flex;
-          flex-direction: row;
-          box-sizing: border-box;
-        }
-        .address-section {
-          flex: 0.8;
-          font-size: 30pt;
-          line-height: 1.3;
-          padding-right: 0.5cm;
-        }
-        .barcode-section {
-          flex: 0.2;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          border-left: 1px dashed #999;
-          padding-left: 0.3cm;
-        }
-        .box-number {
-          font-size: 24pt;
-          font-weight: bold;
-          margin-bottom: 0.5cm;
-          text-align: center;
-        }
-        .barcode-container {
-          width: 100%;
-          text-align: center;
-        }
-        .page-break {
-          page-break-after: always;
-        }
-        h2 {
-          margin-top: 0;
-          font-size: 30pt;
-        }
-        p {
-          margin: 0.2cm 0;
-          font-size: 30pt;
-        }
-        .font-bold {
-          font-weight: bold;
-        }
-        .uppercase {
-          text-transform: uppercase;
-        }
-      </style>
-      ${allLabels}
-    `
+    <style>
+      @page {
+        size: A4;
+        margin: 0.5cm;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .label-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+      }
+      .label-container.two-column {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-gap: 0.2cm;
+      }
+      .label {
+        border: 1px solid #000;
+        border-radius: 5px;
+        padding: 0.5cm;
+        box-sizing: border-box;
+        position: relative;
+        page-break-inside: avoid;
+        overflow: hidden;
+      }
+      /* Single column layout */
+      .label-container:not(.two-column) .label {
+        width: 100%;
+        height: ${Math.floor(26.7 / totalBoxes)}cm;
+        margin-bottom: 0.2cm;
+      }
+      .label-container:not(.two-column) .label:last-child {
+        margin-bottom: 0;
+      }
+      /* Two column layout */
+      .label-container.two-column .label {
+        height: ${Math.floor(26.7 / Math.ceil(totalBoxes / 2))}cm;
+      }
+      .box-number {
+        position: absolute;
+        top: 0.3cm;
+        left: 0.5cm;
+        font-weight: bold;
+        font-size: ${useDoubleColumn ? "90%" : "100%"};
+      }
+      .barcode-container {
+        position: absolute;
+        top: 0.3cm;
+        right: 0.3cm;
+        width: 20%;
+        text-align: right;
+        margin-right: 10%;
+      }
+      .address-section {
+        width: 75%;
+        padding-top: ${useDoubleColumn ? "1.2cm" : "1.5cm"};
+      }
+      
+      /* Dynamic font sizes based on number of labels and layout */
+      h2 { 
+        margin: 0 0 0.2cm 0;
+        font-weight: bold;
+        font-size: ${useDoubleColumn
+                ? totalBoxes <= 4
+                    ? "120%"
+                    : "100%"
+                : totalBoxes === 1
+                    ? "200%"
+                    : totalBoxes === 2
+                        ? "160%"
+                        : "140%"
+            }; 
+      }
+      .name { 
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: ${useDoubleColumn
+                ? totalBoxes <= 4
+                    ? "140%"
+                    : "120%"
+                : totalBoxes === 1
+                    ? "260%"
+                    : totalBoxes === 2
+                        ? "220%"
+                        : "180%"
+            }; 
+        margin: 0 0 0.2cm 0;
+        line-height: 1.2;
+      }
+      .address { 
+        margin: 0 0 0.1cm 0;
+        font-size: ${useDoubleColumn
+                ? totalBoxes <= 4
+                    ? "120%"
+                    : "100%"
+                : totalBoxes === 1
+                    ? "340%"
+                    : totalBoxes === 2
+                        ? "180%"
+                        : "150%"
+            }; 
+        line-height: 1.3;
+      }
+      .location, .contact { 
+        margin: 0 0 0.1cm 0;
+        font-size: ${useDoubleColumn
+                ? totalBoxes <= 4
+                    ? "110%"
+                    : "90%"
+                : totalBoxes === 1
+                    ? "200%"
+                    : totalBoxes === 2
+                        ? "140%"
+                        : "120%"
+            }; 
+        line-height: 1.3;
+      }
+    </style>
+    ${allLabels}
+  `
 
         // Render barcodes after the HTML is set
         const barcodeElements = document.querySelectorAll(".barcode-svg")
         barcodeElements.forEach((element) => {
+            // Adjust barcode size based on label size and layout
+            let barcodeHeight, barcodeWidth
+
+            if (useDoubleColumn) {
+                // Two-column layout - smaller barcodes
+                if (totalBoxes <= 4) {
+                    barcodeHeight = 35
+                    barcodeWidth = 1.2
+                } else {
+                    barcodeHeight = 30
+                    barcodeWidth = 1
+                }
+            } else {
+                // Single-column layout - larger barcodes
+                if (totalBoxes === 1) {
+                    barcodeHeight = 50
+                    barcodeWidth = 1.8
+                } else if (totalBoxes === 2) {
+                    barcodeHeight = 45
+                    barcodeWidth = 1.6
+                } else {
+                    barcodeHeight = 40
+                    barcodeWidth = 1.4
+                }
+            }
+
             JsBarcode(element, awbData?.trackingNumber || "N/A", {
                 format: "CODE128",
-                width: 2,
-                height: 80,
-                displayValue: true,
-                fontSize: 14,
+                width: barcodeWidth,
+                height: barcodeHeight,
+                displayValue: false,
                 margin: 0,
             })
         })
 
-        // Print and restore
+        // Print and restore with a slightly longer timeout
         setTimeout(() => {
             window.print()
             document.body.innerHTML = originalContent
             window.location.reload()
-        }, 500)
+        }, 800)
     }
 
     if (loading) {
@@ -181,6 +266,9 @@ export default function Label() {
         )
     }
 
+    // Determine if we should show a 2-column preview
+    const useDoubleColumn = totalBoxes > 2
+
     return (
         <>
             <div className="container mx-auto px-4 py-6 bg-white">
@@ -195,8 +283,9 @@ export default function Label() {
                                 id="totalBoxes"
                                 type="number"
                                 min="1"
+                                max="8"
                                 value={totalBoxes}
-                                onChange={(e) => setTotalBoxes(Math.max(1, Number.parseInt(e.target.value) || 1))}
+                                onChange={(e) => setTotalBoxes(Math.max(1, Math.min(8, Number.parseInt(e.target.value) || 1)))}
                                 className="w-16 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
                             />
                         </div>
@@ -210,31 +299,61 @@ export default function Label() {
                 <div className="bg-gray-100 p-4 rounded-lg mb-6">
                     <h2 className="text-lg font-medium mb-2">Preview:</h2>
                     <p className="text-sm text-gray-600">
-                        This will generate {totalBoxes} shipping label{totalBoxes > 1 ? "s" : ""} with box numbering (e.g., "Box -
-                        1/{totalBoxes}"). Labels will be formatted with 2 per page for A4 printing.
+                        This will generate {totalBoxes} shipping label{totalBoxes > 1 ? "s" : ""} with a barcode in the top right
+                        corner.{" "}
+                        {useDoubleColumn
+                            ? "Labels will be arranged in a 2-column layout for optimal space usage."
+                            : "Labels will be stacked vertically on a single A4 page."}{" "}
+                        The font size will automatically scale to maximize readability based on the number of labels.
                     </p>
                 </div>
 
-                <div ref={printableAreaRef} className="flex flex-col gap-4">
-                    {Array.from({ length: Math.min(totalBoxes, 2) }).map((_, index) => (
-                        <div key={index} className="border border-gray-300 rounded-lg p-4 flex flex-row">
-                            <div className="flex-grow pr-4" style={{ width: "80%" }}>
-                                <h2 className="font-bold mb-2">Receiver:</h2>
-                                <p className="font-bold uppercase">{awbData.receiver?.name}</p>
-                                <p>{awbData.receiver?.address}</p>
-                                <p>
+                <div
+                    ref={printableAreaRef}
+                    className={`max-w-[21cm] mx-auto ${useDoubleColumn ? "grid grid-cols-2 gap-4" : "flex flex-col gap-4"}`}
+                >
+                    {Array.from({ length: Math.min(totalBoxes, useDoubleColumn ? 4 : 2) }).map((_, index) => (
+                        <div
+                            key={index}
+                            className="border border-gray-300 rounded-lg p-4 relative"
+                            style={{
+                                height: useDoubleColumn
+                                    ? `${Math.min(totalBoxes <= 4 ? "6cm" : "4cm", "6cm")}`
+                                    : `${Math.min(totalBoxes === 1 ? "12cm" : "6cm", "12cm")}`,
+                            }}
+                        >
+                            <div className="absolute top-2 left-2 font-bold text-sm">
+                                Box No: {index + 1}/{totalBoxes}
+                            </div>
+                            <div className="absolute top-2 right-2" style={{ width: "20%" }}>
+                                <Barcode
+                                    height={useDoubleColumn ? 25 : totalBoxes === 1 ? 40 : 30}
+                                    width={useDoubleColumn ? 1 : totalBoxes === 1 ? 1.5 : 1}
+                                    fontSize={0}
+                                    value={awbData?.trackingNumber}
+                                    displayValue={false}
+                                />
+                            </div>
+                            <div className="pt-10 w-3/4">
+                                <h2
+                                    className={`font-bold mb-2 ${useDoubleColumn ? "text-base" : totalBoxes === 1 ? "text-2xl" : "text-xl"}`}
+                                >
+                                    Receiver:
+                                </h2>
+                                <p
+                                    className={`font-bold uppercase ${useDoubleColumn ? "text-base" : totalBoxes === 1 ? "text-xl" : "text-lg"}`}
+                                >
+                                    {awbData.receiver?.name}
+                                </p>
+                                <p className={useDoubleColumn ? "text-sm" : totalBoxes === 1 ? "text-lg" : "text-base"}>
+                                    {awbData.receiver?.address}
+                                </p>
+                                <p className={useDoubleColumn ? "text-sm" : totalBoxes === 1 ? "text-lg" : "text-base"}>
                                     {awbData.receiver?.zip}, {awbData.receiver?.country}
                                 </p>
-                                <p>Cont No: {awbData.receiver?.contact}</p>
-                            </div>
-                            <div
-                                className="border-l border-gray-300 pl-4 flex flex-col items-center justify-center"
-                                style={{ width: "20%" }}
-                            >
-                                <div className="text-xl font-bold mb-2">
-                                    Box - {index + 1}/{totalBoxes}
-                                </div>
-                                <Barcode height={60} width={1.5} fontSize={12} value={awbData?.trackingNumber} displayValue={true} />
+                                <p className={useDoubleColumn ? "text-sm" : totalBoxes === 1 ? "text-lg" : "text-base"}>
+                                    Cont No: {awbData.receiver?.contact}
+                                </p>
                             </div>
                         </div>
                     ))}
