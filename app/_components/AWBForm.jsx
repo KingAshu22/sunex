@@ -27,7 +27,6 @@ import HsnSearchDialog from "./HsnSearchDialog"
 import toast from "react-hot-toast"
 import { Checkbox } from "@/components/ui/checkbox"
 import ItemNameAutocomplete from "./ItemNameAutoComplete"
-import PhotoUploader from "./PhotoUploader"
 
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
@@ -371,7 +370,6 @@ export default function AWBForm({ isEdit = false, awb }) {
           kyc: {
             type: kycType,
             kyc,
-            link,
           },
           owner: localStorage.getItem("id"),
           gst,
