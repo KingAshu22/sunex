@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { format } from "date-fns"
-import { CalendarIcon, Plus, Minus, Trash2, Search } from "lucide-react"
+import { CalendarIcon, Plus, Minus, Trash2, Search, TruckIcon, CheckCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -27,6 +27,9 @@ import HsnSearchDialog from "./HsnSearchDialog"
 import toast from "react-hot-toast"
 import { Checkbox } from "@/components/ui/checkbox"
 import ItemNameAutocomplete from "./ItemNameAutoComplete"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
@@ -43,18 +46,25 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [boxCount, setBoxCount] = useState("")
   const [showItemDetails, setShowItemDetails] = useState(false)
 
+  // Rate fetching state
+  const [showRateDialog, setShowRateDialog] = useState(false)
+  const [fetchingRates, setFetchingRates] = useState(false)
+  const [rates, setRates] = useState(null)
+  const [selectedRate, setSelectedRate] = useState(null)
+  const [selectedCourier, setSelectedCourier] = useState(null)
+
   // Form state
   const [date, setDate] = useState(awb?.date || Date.now())
   const [parcelType, setParcelType] = useState(awb?.parcelType || "International")
   const [staffId, setStaffId] = useState(awb?.staffId || "")
   const [invoiceNumber, setInvoiceNumber] = useState(awb?.invoiceNumber || "")
   const [trackingNumber, setTrackingNumber] = useState(awb?.trackingNumber || "")
-  const [via, setVia] = useState("Air Shipment")
-  const [shipmentType, setShipmentType] = useState("Non Document")
+  const [via, setVia] = useState(awb?.via || "Air Shipment")
+  const [shipmentType, setShipmentType] = useState(awb?.shipmentType || "Non Document")
 
   //Forwarding Details
-  const [forwardingNo, setForwardingNo] = useState("")
-  const [forwardingLink, setForwardingLink] = useState("")
+  const [forwardingNo, setForwardingNo] = useState(awb?.forwardingNo || "")
+  const [forwardingLink, setForwardingLink] = useState(awb?.forwardingLink || "")
 
   // Sender details
   const [senderName, setSenderName] = useState(awb?.sender?.name || "")
@@ -79,6 +89,11 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   // Derived state
   const [totalChargeableWeight, setTotalChargeableWeight] = useState("")
+
+  // Check if all required fields are filled for rate fetching
+  const canFetchRates = useMemo(() => {
+    return boxes.length > 0 && totalChargeableWeight && Number(totalChargeableWeight) > 0 && receiverCountry
+  }, [boxes, totalChargeableWeight, receiverCountry])
 
   // Generate boxes based on user input
   const generateBoxes = () => {
@@ -152,6 +167,35 @@ export default function AWBForm({ isEdit = false, awb }) {
     }, 0)
 
     setTotalChargeableWeight(Math.round(totalWeight).toString())
+  }, [boxes])
+
+  // Reset selected rate when weight changes
+  useEffect(() => {
+    setSelectedRate(null)
+    setSelectedCourier(null)
+    setRates(null)
+  }, [totalChargeableWeight, receiverCountry])
+
+  // Initialize selected rate and courier from AWB data when in edit mode
+  useEffect(() => {
+    if (isEdit && awb?.rateInfo) {
+      setSelectedRate(awb.rateInfo)
+      setSelectedCourier(awb.rateInfo.courier)
+    }
+  }, [isEdit, awb])
+
+  // Auto-check shipping invoice checkbox if items exist
+  useEffect(() => {
+    if (boxes.length > 0) {
+      // Check if any box has items with name, quantity, and price
+      const hasItems = boxes.some(
+        (box) => box.items && box.items.some((item) => item.name && item.quantity && item.price),
+      )
+
+      if (hasItems) {
+        setShowItemDetails(true)
+      }
+    }
   }, [boxes])
 
   // Fetch customers from API
@@ -263,17 +307,9 @@ export default function AWBForm({ isEdit = false, awb }) {
   }, [])
 
   useEffect(() => {
-    if (
-      shipmentType === "Document" &&
-      boxes.length > 0 &&
-      boxes[0]?.items?.length > 0
-    ) {
+    if (shipmentType === "Document" && boxes.length > 0 && boxes[0]?.items?.length > 0) {
       const item = boxes[0].items[0]
-      if (
-        item.name !== "Document" ||
-        item.price !== 10 ||
-        item.hsnCode !== "482030"
-      ) {
+      if (item.name !== "Document" || item.price !== 10 || item.hsnCode !== "482030") {
         handleItemChange(0, 0, "name", "Document")
         handleItemChange(0, 0, "price", 10)
         handleItemChange(0, 0, "hsnCode", "482030")
@@ -342,6 +378,59 @@ export default function AWBForm({ isEdit = false, awb }) {
     setShowSearchDialog(false)
   }
 
+  // Rate fetching function
+  const fetchRates = async () => {
+    if (!canFetchRates) {
+      toast.error("Please fill in all required fields to fetch rates")
+      return
+    }
+
+    setFetchingRates(true)
+    setShowRateDialog(true)
+
+    try {
+      // Fetch rates for different courier services
+      const courierTypes = ["dhl", "fedex", "ups", "dtdc", "aramex", "orbit"]
+      const ratePromises = courierTypes.map((type) =>
+        axios
+          .get("/api/rate", {
+            params: {
+              type,
+              weight: totalChargeableWeight,
+              country: receiverCountry,
+              profitPercent: 50, // Default profit percentage
+            },
+          })
+          .then((response) => ({
+            type,
+            ...response.data,
+            success: true,
+          }))
+          .catch((error) => ({
+            type,
+            error: error.response?.data?.error || "Failed to fetch rate",
+            success: false,
+          })),
+      )
+
+      const results = await Promise.all(ratePromises)
+      setRates(results)
+    } catch (error) {
+      console.error("Error fetching rates:", error)
+      toast.error("Failed to fetch rates. Please try again.")
+    } finally {
+      setFetchingRates(false)
+    }
+  }
+
+  // Handle rate selection
+  const handleSelectRate = (rate, type) => {
+    setSelectedRate(rate)
+    setSelectedCourier(type)
+    toast.success(`Selected ${type.toUpperCase()} rate: ₹${rate.totalWithGST}`)
+    setShowRateDialog(false)
+  }
+
   // Form submission
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -394,6 +483,18 @@ export default function AWBForm({ isEdit = false, awb }) {
               },
             ],
           }),
+        // Add selected rate information if available
+        ...(selectedRate && {
+          rateInfo: {
+            courier: selectedCourier,
+            zone: selectedRate.zone,
+            rate: selectedRate.rate,
+            baseCharge: selectedRate.baseCharge,
+            totalWithGST: selectedRate.totalWithGST,
+            GST: selectedRate.GST,
+            weight: selectedRate.weight,
+          },
+        }),
       }
 
       const response = isEdit
@@ -411,6 +512,44 @@ export default function AWBForm({ isEdit = false, awb }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Get courier logo and color
+  const getCourierInfo = (type) => {
+    const courierInfo = {
+      dhl: {
+        name: "SunEx-D",
+        color: "bg-yellow-400",
+        textColor: "text-yellow-800",
+      },
+      fedex: {
+        name: "SunEx-F",
+        color: "bg-purple-600",
+        textColor: "text-purple-50",
+      },
+      ups: {
+        name: "SunEx-U",
+        color: "bg-amber-700",
+        textColor: "text-amber-50",
+      },
+      dtdc: {
+        name: "SunEx-W",
+        color: "bg-red-600",
+        textColor: "text-red-50",
+      },
+      aramex: {
+        name: "SunEx-A",
+        color: "bg-red-500",
+        textColor: "text-red-50",
+      },
+      orbit: {
+        name: "SunEx-O",
+        color: "bg-blue-600",
+        textColor: "text-blue-50",
+      },
+    }
+
+    return courierInfo[type] || { name: type.toUpperCase(), color: "bg-gray-500", textColor: "text-gray-50" }
   }
 
   return (
@@ -964,6 +1103,53 @@ export default function AWBForm({ isEdit = false, awb }) {
                 )}
               </div>
             )}
+
+            {/* Rate Fetching Button */}
+            {canFetchRates && (
+              <div className="pt-4 border-t">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-medium">Ready to fetch shipping rates?</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Get quotes from multiple carriers based on your package details
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={fetchRates}
+                    className="bg-[#232C65] hover:bg-[#1a2150]"
+                    disabled={fetchingRates}
+                  >
+                    <TruckIcon className="h-4 w-4 mr-2" />
+                    {fetchingRates ? "Fetching Rates..." : "Fetch Shipping Rates"}
+                  </Button>
+                </div>
+
+                {selectedRate && selectedCourier && (
+                  <div className="mt-4 p-4 border rounded-lg bg-green-50">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <div>
+                        <h4 className="font-medium">Selected Rate: {getCourierInfo(selectedCourier).name}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge
+                            className={cn(
+                              "px-2 py-1",
+                              getCourierInfo(selectedCourier).color,
+                              getCourierInfo(selectedCourier).textColor,
+                            )}
+                          >
+                            {getCourierInfo(selectedCourier).name}
+                          </Badge>
+                          <span className="text-sm">Zone: {selectedRate.zone}</span>
+                          <span className="text-sm font-semibold">₹{selectedRate.totalWithGST}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -1048,6 +1234,184 @@ export default function AWBForm({ isEdit = false, awb }) {
 
       {/* HSN Search Dialog */}
       <HsnSearchDialog open={showHsnSearchDialog} onOpenChange={setShowHsnSearchDialog} onSelect={handleSelectHsn} />
+
+      {/* Rate Selection Dialog */}
+      <Dialog open={showRateDialog} onOpenChange={setShowRateDialog}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Select Shipping Rate</DialogTitle>
+            <DialogDescription>
+              Compare rates from different carriers for your {totalChargeableWeight}kg package to {receiverCountry}
+            </DialogDescription>
+          </DialogHeader>
+
+          {fetchingRates ? (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center space-x-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-[250px]" />
+                  <Skeleton className="h-4 w-[200px]" />
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-[250px]" />
+                  <Skeleton className="h-4 w-[200px]" />
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-[250px]" />
+                  <Skeleton className="h-4 w-[200px]" />
+                </div>
+              </div>
+            </div>
+          ) : rates ? (
+            <Tabs defaultValue="all" className="w-full">
+              <TabsList className="grid grid-cols-2 mb-4">
+                <TabsTrigger value="all">All Carriers</TabsTrigger>
+                <TabsTrigger value="available">Available Carriers</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all" className="space-y-4">
+                {rates.map((rate) => (
+                  <Card key={rate.type} className={cn("overflow-hidden transition-all", !rate.success && "opacity-60")}>
+                    <CardHeader className={cn("py-3", getCourierInfo(rate.type).color)}>
+                      <CardTitle
+                        className={cn("text-lg flex justify-between items-center", getCourierInfo(rate.type).textColor)}
+                      >
+                        <span>{getCourierInfo(rate.type).name}</span>
+                        {rate.success && (
+                          <Badge variant="outline" className="bg-white text-black">
+                            Zone {rate.zone}
+                          </Badge>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="py-4">
+                      {rate.success ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Base Rate</p>
+                              <p className="text-lg font-semibold">₹{rate.baseCharge}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Fuel Charges</p>
+                              <p className="text-lg font-semibold">₹{rate.fuelCharges}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">GST (18%)</p>
+                              <p className="text-lg font-semibold">₹{Math.round(rate.GST)}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Total</p>
+                              <p className="text-xl font-bold text-[#232C65]">₹{rate.totalWithGST}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end">
+                            <Button
+                              onClick={() => handleSelectRate(rate, rate.type)}
+                              className={cn(
+                                "mt-2",
+                                getCourierInfo(rate.type).color,
+                                getCourierInfo(rate.type).textColor,
+                              )}
+                            >
+                              Select {getCourierInfo(rate.type).name}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="py-2">
+                          <p className="text-red-500">{rate.error || "Service unavailable for this route"}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </TabsContent>
+
+              <TabsContent value="available" className="space-y-4">
+                {rates.filter((r) => r.success).length > 0 ? (
+                  rates
+                    .filter((r) => r.success)
+                    .map((rate) => (
+                      <Card key={rate.type} className="overflow-hidden">
+                        <CardHeader className={cn("py-3", getCourierInfo(rate.type).color)}>
+                          <CardTitle
+                            className={cn(
+                              "text-lg flex justify-between items-center",
+                              getCourierInfo(rate.type).textColor,
+                            )}
+                          >
+                            <span>{getCourierInfo(rate.type).name}</span>
+                            <Badge variant="outline" className="bg-white text-black">
+                              Zone {rate.zone}
+                            </Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="py-4">
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div>
+                                <p className="text-sm text-muted-foreground">Base Rate</p>
+                                <p className="text-lg font-semibold">₹{rate.baseCharge}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Fuel Charges</p>
+                                <p className="text-lg font-semibold">₹{rate.fuelCharges}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">GST (18%)</p>
+                                <p className="text-lg font-semibold">₹{Math.round(rate.GST)}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Total</p>
+                                <p className="text-xl font-bold text-[#232C65]">₹{rate.totalWithGST}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end">
+                              <Button
+                                onClick={() => handleSelectRate(rate, rate.type)}
+                                className={cn(
+                                  "mt-2",
+                                  getCourierInfo(rate.type).color,
+                                  getCourierInfo(rate.type).textColor,
+                                )}
+                              >
+                                Select {getCourierInfo(rate.type).name}
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No carriers available for this route and weight</p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Click "Fetch Shipping Rates" to see available options</p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRateDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

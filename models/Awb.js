@@ -23,6 +23,15 @@ const AwbSchema = new Schema({
     }
   ],
   parcelValue: Number,
+  rateInfo: {
+    courier: String,
+    zone: String,
+    rate: String,
+    baseCharge: String,
+    totalWithGST: String,
+    GST: String,
+    weight: String,
+  },
 });
 
 const Awb = models.Awb || model("Awb", AwbSchema);
