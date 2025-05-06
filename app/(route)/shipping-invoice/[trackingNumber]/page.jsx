@@ -317,11 +317,9 @@ export default function ShippingInvoicePage() {
                             <p>
                                 <strong>Email:</strong> {awbData.sender?.email || "yourship.sunexpress@gmail.com"}
                             </p>
-                            {awbData.gst && (
-                                <p>
-                                    <strong>GST No -</strong> {awbData.gst}
-                                </p>
-                            )}
+                            <p>
+                                <strong>{awbData.sender.kyc.type}</strong> {awbData.sender.kyc.kyc}
+                            </p>
                         </div>
                         <div className="border border-gray-300 rounded-lg p-1">
                             <h2 className="font-bold mb-2">Receiver:</h2>
@@ -339,7 +337,7 @@ export default function ShippingInvoicePage() {
                         </div>
                     </div>
 
-                    <div className="h-[620px]">
+                    <div className="h-[578px]">
                         <table className="w-full border-collapse mb-2 text-[12px]">
                             <thead>
                                 <tr className="bg-gray-100">
@@ -396,6 +394,7 @@ export default function ShippingInvoicePage() {
                     </div>
 
                     <div className="mt-2 pt-1 text-justify italic text-[12px] border-t border-gray-400">
+                        <p className="font-bold">Declaration:</p>
                         <p>We certify that the information given above is true and correct to the best of our knowledge</p>
                     </div>
 

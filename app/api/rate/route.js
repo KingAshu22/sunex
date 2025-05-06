@@ -7,7 +7,7 @@ export async function GET(req) {
     const type = searchParams.get("type");
     const weight = parseFloat(searchParams.get("weight"));
     const country = searchParams.get("country");
-    const profitPercent = parseFloat(searchParams.get("profitPercent")) || 50;
+    const profitPercent = parseFloat(searchParams.get("profitPercent")) || 0;
 
     if (!type || !weight || !country) {
         return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
@@ -38,11 +38,20 @@ export async function GET(req) {
             return NextResponse.json({ error: "Zone not found for the given country" }, { status: 404 });
         }
 
-        const roundedWeight = (Math.ceil(weight) + 0.0).toFixed(1).toString();
-        const weightRate = rates.find((rate) => rate.kg == roundedWeight);
+        const roundedWeight = weight.toFixed(2); // No ceil, just 2 decimals
+        let weightRate = rates.find((rate) => parseFloat(rate.kg) === parseFloat(roundedWeight));
 
         if (!weightRate) {
-            return NextResponse.json({ error: "Rate not found for the given weight" }, { status: 404 });
+            const sortedRates = rates
+                .map(rate => ({ kg: parseFloat(rate.kg), data: rate }))
+                .sort((a, b) => b.kg - a.kg);
+
+            const fallbackRate = sortedRates.find(r => r.kg <= weight);
+            if (fallbackRate) {
+                weightRate = fallbackRate.data;
+            } else {
+                return NextResponse.json({ error: "No suitable rate found for the weight" }, { status: 404 });
+            }
         }
 
         const zoneRate = weightRate[selectedZone];
@@ -50,57 +59,60 @@ export async function GET(req) {
             return NextResponse.json({ error: "Rate not found for the selected zone" }, { status: 404 });
         }
 
-        const rate = Math.ceil(Math.ceil(zoneRate) / weight);
-        let baseCharges = rate * weight;
-        const baseCharge = baseCharges;
+        const rate = parseFloat((zoneRate / weight).toFixed(2));
+        const baseCharge = parseFloat((rate * weight).toFixed(2));
+        let baseCharges = baseCharge;
 
+        // COVID charges
         let covidCharges = 0;
         const covidChargePerKg = 15;
-
         if (["aramex"].includes(type)) {
-            covidCharges = Math.ceil(covidChargePerKg * weight);
+            covidCharges = parseFloat((covidChargePerKg * weight).toFixed(2));
         }
-
         baseCharges += covidCharges;
 
-        let fuelCharges = 0;
-        if (type === "dhl" || type === "fedex") {
-            fuelCharges = Math.ceil((30 / 100) * baseCharges);
-        } else if (type === "ups") {
-            fuelCharges = Math.ceil((30.5 / 100) * baseCharges);
-        } else if (type === "dtdc") {
-            fuelCharges = Math.ceil((36 / 100) * baseCharges);
-        } else if (["aramex", "orbit"].includes(type)) {
-            fuelCharges = Math.ceil((25 / 100) * baseCharges);
-        }
-
-        baseCharges += fuelCharges;
-
+        // Extra charges
         let extraChargeTotal = 0;
         for (const chargeValue of Object.values(extraCharges)) {
-            const charge = Math.ceil(chargeValue * weight);
+            const charge = parseFloat((chargeValue * weight).toFixed(2));
             extraChargeTotal += charge;
         }
-
         baseCharges += extraChargeTotal;
 
-        let profitCharges = 0;
-        profitCharges = Math.ceil((profitPercent / 100) * baseCharges);
+        // Fuel charges come last now
+        let fuelCharges = 0;
+        if (type === "dhl") {
+            fuelCharges = parseFloat(((27.5 / 100) * baseCharges).toFixed(2));
+        } else if (type === "fedex") {
+            fuelCharges = parseFloat(((29 / 100) * baseCharges).toFixed(2));
+        } else if (type === "ups") {
+            fuelCharges = parseFloat(((30.5 / 100) * baseCharges).toFixed(2));
+        } else if (type === "dtdc") {
+            fuelCharges = parseFloat(((36 / 100) * baseCharges).toFixed(2));
+        } else if (["aramex", "orbit"].includes(type)) {
+            fuelCharges = parseFloat(((35.5 / 100) * baseCharges).toFixed(2));
+        }
+        baseCharges += fuelCharges;
 
-        const total = baseCharges + profitCharges;
-        const GST = (18 / 100) * total;
-        const totalWithGST = Math.ceil(total + GST);
+        // Profit
+        const profitCharges = parseFloat(((profitPercent / 100) * baseCharges).toFixed(2));
+        const total = parseFloat((baseCharges + profitCharges).toFixed(2));
+
+        // GST
+        const GST = parseFloat(((18 / 100) * total).toFixed(2));
+        const totalWithGST = parseFloat((total + GST).toFixed(2));
 
         return NextResponse.json({
             zone: selectedZone,
             weight: roundedWeight,
+            zoneRate: parseFloat(zoneRate.toFixed(2)),
             rate,
             baseCharge,
             covidCharges,
-            fuelCharges,
             extraCharges,
             extraChargeTotal,
-            baseCharges,
+            fuelCharges,
+            baseCharges: parseFloat(baseCharges.toFixed(2)),
             profitPercent,
             profitCharges,
             total,

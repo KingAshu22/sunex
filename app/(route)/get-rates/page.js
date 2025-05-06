@@ -12,7 +12,7 @@ const availableTypes = ['dhl', 'fedex', 'ups', 'dtdc', 'aramex', 'orbit'];
 export default function GetRatesPage() {
     const [weight, setWeight] = useState('');
     const [country, setCountry] = useState('');
-    const [profitPercent, setProfitPercent] = useState('50');
+    const [profitPercent, setProfitPercent] = useState('0');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
