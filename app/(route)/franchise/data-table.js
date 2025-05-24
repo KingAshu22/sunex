@@ -67,8 +67,8 @@ export function DataTable({ columns, data }) {
           }
           className="max-w-40"
         />
-        <Button onClick={() => router.push("/clients/create")}>
-          Create New Client
+        <Button onClick={() => router.push("/franchise/create")}>
+          Create New Franchise
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

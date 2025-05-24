@@ -56,6 +56,11 @@ export function AppSidebar() {
           url: "/clients",
           icon: User,
         },
+        {
+          title: "Franchise",
+          url: "/franchise",
+          icon: User,
+        },
       ]
       : []),
   ];

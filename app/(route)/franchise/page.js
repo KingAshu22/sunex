@@ -19,7 +19,7 @@ function ClientTable() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get("/api/clients");
+      const response = await axios.get("/api/franchises");
       console.log(response.data);
       setClients(response.data);
     } catch (error) {

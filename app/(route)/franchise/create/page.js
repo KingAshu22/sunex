@@ -1,10 +1,10 @@
-import ClientForm from "@/app/_components/ClientForm";
+import FranchiseForm from "@/app/_components/FranchiseForm";
 import React from "react";
 
 const CreateClient = () => {
     return (
         <div className="min-h-screen flex items-center justify-center">
-            <ClientForm />
+            <FranchiseForm />
         </div>
     );
 };

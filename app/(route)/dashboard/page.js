@@ -63,6 +63,14 @@ function Dashboard() {
             <p className="text-4xl font-bold">{awbData.length}</p>
           </CardContent>
         </Card>
+        <Card onClick={() => window.location.href = "/get-rates"}>
+          <CardHeader>
+            <CardTitle>Rates</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">Get Rates</p>
+          </CardContent>
+        </Card>
       </div>
       <Card>
         <CardHeader>

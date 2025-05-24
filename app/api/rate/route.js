@@ -103,6 +103,7 @@ export async function GET(req) {
         const totalWithGST = parseFloat((total + GST).toFixed(2));
 
         return NextResponse.json({
+            service: rateResult.service,
             zone: selectedZone,
             weight: roundedWeight,
             zoneRate: parseFloat(zoneRate.toFixed(2)),

@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
+import { Countries } from '@/app/constants/country';
 
 const availableTypes = ['dhl', 'fedex', 'ups', 'dtdc', 'aramex', 'orbit'];
 
@@ -64,11 +66,18 @@ export default function GetRatesPage() {
                 </div>
                 <div>
                     <Label>Destination Country</Label>
-                    <Input
-                        placeholder="Eg: India"
-                        value={country}
-                        onChange={(e) => setCountry(e.target.value)}
-                    />
+                    <Select value={country} onValueChange={setCountry}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Destination Country" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Countries.map((country, index) => (
+                    <SelectItem key={index} value={country}>
+                      {country}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
                 </div>
                 <div>
                     <Label>Profit %</Label>
@@ -98,18 +107,23 @@ export default function GetRatesPage() {
                 {results.map(({ type, data }) => (
                     <Card key={type}>
                         <CardHeader>
-                            <CardTitle className="capitalize">{type}</CardTitle>
+                            <CardTitle className="uppercase">{data.service}</CardTitle>
                             <p className="text-muted-foreground text-sm">{data.zone} Zone</p>
                         </CardHeader>
                         <CardContent className="space-y-1 text-sm">
                             <p>Weight: {data.weight} kg</p>
-                            <p>Rate: ₹{data.rate} /kg</p>
-                            <p>Base Charge: ₹{data.baseCharge}</p>
-                            <p>Covid Charges: ₹{data.covidCharges}</p>
-                            <p>Fuel Charges: ₹{data.fuelCharges}</p>
-                            <p>Extra Charges: ₹{data.extraChargeTotal}</p>
-                            <p>Profit: ₹{data.profitCharges} ({data.profitPercent}%)</p>
-                            <p className="font-semibold text-green-600">Total: ₹{data.totalWithGST}</p>
+                            <p>Rate: ₹{data.rate.toLocaleString("en-IN")} /kg</p>
+                            <p>Base Charge: ₹{data.baseCharge.toLocaleString("en-IN")}</p>
+                            <p>Covid Charges: ₹{data.covidCharges.toLocaleString("en-IN")}</p>
+                            <p>Fuel Charges: ₹{data.fuelCharges.toLocaleString("en-IN")}</p>
+                            <p>Extra Charges: ₹{data.extraChargeTotal.toLocaleString("en-IN")}</p>
+                            <p>Profit: ₹{data.profitCharges.toLocaleString("en-IN")} ({data.profitPercent}%)</p>
+                            <p>Total: ₹{data.total.toLocaleString("en-IN")}</p>
+                            <p>GST: ₹{data.GST.toLocaleString("en-IN")}</p>
+                            <p className="font-semibold text-green-600">
+                                Total: ₹{data.totalWithGST.toLocaleString("en-IN", { maximumFractionDigits: 2 })} 
+                                ({(data.totalWithGST/data.weight).toLocaleString("en-IN", { maximumFractionDigits: 2 })}/kg)
+                            </p>
                         </CardContent>
                     </Card>
                 ))}
