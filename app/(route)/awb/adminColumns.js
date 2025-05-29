@@ -70,7 +70,7 @@ export const adminColumns = [
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="flex items-center gap-1 cursor-pointer"
       >
-        Invoice No. <ArrowUpDown className="ml-2 h-4 w-4" />
+        INV <ArrowUpDown className="ml-2 h-4 w-4" />
       </span>
     ),
   },
@@ -81,7 +81,7 @@ export const adminColumns = [
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="flex items-center gap-1 cursor-pointer"
       >
-        Tracking No. <ArrowUpDown className="ml-2 h-4 w-4" />
+        Tracking <ArrowUpDown className="ml-2 h-4 w-4" />
       </span>
     ),
   },
@@ -105,14 +105,42 @@ export const adminColumns = [
     },
   },
   {
-    accessorKey: "parcelStatus",
-    header: "Status",
+    accessorKey: "country",
+    header: "Country",
     cell: ({ row }) => {
-      const parcelStatus = row.original.parcelStatus;
+      const country = row.original.receiver.country;
       return (
         <span>
-          {parcelStatus
-            ? parcelStatus[parcelStatus.length - 1]?.status
+          {country
+            ? country.slice(0, 20)
+            : "Unknown"}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "senderName",
+    header: "Sender Name",
+    cell: ({ row }) => {
+      const senderName = row.original.sender.name;
+      return (
+        <span>
+          {senderName
+            ? senderName.slice(0, 20)
+            : "Unknown"}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "receiverName",
+    header: "Receiver Name",
+    cell: ({ row }) => {
+      const receiverName = row.original.receiver.name;
+      return (
+        <span>
+          {receiverName
+            ? receiverName.slice(0, 20)
             : "Unknown"}
         </span>
       );

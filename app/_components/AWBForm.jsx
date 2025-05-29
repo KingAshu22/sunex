@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Countries } from "@/app/constants/country"
+import { Countries, countryCodeMap } from "@/app/constants/country"
 import axios from "axios"
 import { useRouter } from "next/navigation"
 import {
@@ -33,6 +33,27 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
+
+  // Clean up contact numbers from AWB data if in edit mode
+  useEffect(() => {
+    if (isEdit && awb) {
+      // Remove country code from sender contact if present
+      if (awb.sender?.contact) {
+        const senderCountryCode = getCallingCode(awb.sender.country)
+        if (senderCountryCode && awb.sender.contact.startsWith(senderCountryCode)) {
+          setSenderContact(awb.sender.contact.substring(senderCountryCode.length).trim())
+        }
+      }
+
+      // Remove country code from receiver contact if present
+      if (awb.receiver?.contact) {
+        const receiverCountryCode = getCallingCode(awb.receiver.country)
+        if (receiverCountryCode && awb.receiver.contact.startsWith(receiverCountryCode)) {
+          setReceiverContact(awb.receiver.contact.substring(receiverCountryCode.length).trim())
+        }
+      }
+    }
+  }, [isEdit, awb])
 
   // State
   const [success, setSuccess] = useState(false)
@@ -89,6 +110,7 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   // Derived state
   const [totalChargeableWeight, setTotalChargeableWeight] = useState("")
+  const [profitPercent, setProfitPercent] = useState(50)
 
   // Check if all required fields are filled for rate fetching
   const canFetchRates = useMemo(() => {
@@ -124,6 +146,47 @@ export default function AWBForm({ isEdit = false, awb }) {
     return customers.filter((customer) => customer.name.toLowerCase().includes(searchTerm.toLowerCase()))
   }, [customers, searchTerm])
 
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const fetchFranchiseData = async () => {
+      setLoading(true)
+      const userType = localStorage.getItem("userType")
+      const code = localStorage.getItem("code")
+
+      if (userType !== "admin") {
+        try {
+          const response = await axios.get(`/api/franchises/${code}`)
+          const franchise = response.data[0] // since you use `find`, response is an array
+          const rates = franchise.rates
+
+          // Find rate for specific receiverCountry
+          const matchedRate = rates.find((rate) => rate.country === receiverCountry)
+
+          let percent
+          if (matchedRate) {
+            percent = matchedRate.percent
+          } else {
+            const restOfWorldRate = rates.find((rate) => rate.country === "Rest of World")
+            percent = restOfWorldRate ? restOfWorldRate.percent : 0
+          }
+
+          setProfitPercent(percent)
+
+          setLoading(false)
+        } catch (err) {
+          console.error(err)
+          setError("Failed to fetch Franchise data")
+          setLoading(false)
+        }
+      }
+    }
+
+    if (receiverCountry) {
+      fetchFranchiseData()
+    }
+  }, [receiverCountry])
+
   // Fetch customers on component mount
   useEffect(() => {
     fetchCustomers()
@@ -138,7 +201,7 @@ export default function AWBForm({ isEdit = false, awb }) {
         setSenderAddress(customer.address || "")
         setSenderCountry(customer.country || "India")
         setSenderZipCode(customer.zip || "")
-        setSenderContact(customer.contact || "")
+        setSenderContact(customer.contact ? customer.contact.replace(/^\+\d+\s+/, "") : "")
         setKycType(customer.kyc?.type || "Aadhaar No -")
         setKyc(customer.kyc?.kyc || "")
         setGst(customer.gst || "")
@@ -154,10 +217,78 @@ export default function AWBForm({ isEdit = false, awb }) {
         setReceiverAddress(customer.address || "")
         setReceiverCountry(customer.country || "")
         setReceiverZipCode(customer.zip || "")
-        setReceiverContact(customer.contact || "")
+        setReceiverContact(customer.contact ? customer.contact.replace(/^\+\d+\s+/, "") : "")
       }
     }
   }, [receiverName, customers])
+
+  // Fetch postal location data
+  const fetchPostalData = async (postalCode, countryCode) => {
+    try {
+      const response = await axios.get(`https://api.worldpostallocations.com/pincode`, {
+        params: {
+          postalcode: postalCode,
+          countrycode: countryCode,
+        },
+      })
+
+      console.log("Postal data response:", response.data)
+
+      if (response.data && response.data.status === true && response.data.result && response.data.result.length > 0) {
+        return response.data.result[0] // Return the first result
+      }
+      return null
+    } catch (error) {
+      console.error("Error fetching postal data:", error)
+      return null
+    }
+  }
+
+  // Auto-fill sender address when zip code changes
+  useEffect(() => {
+    const updateSenderAddress = async () => {
+      if (senderZipCode && senderZipCode.length >= 4 && senderCountry) {
+        const countryCode = getCountryCode(senderCountry)
+        if (!countryCode) return
+
+        const postalData = await fetchPostalData(senderZipCode, countryCode)
+        if (postalData) {
+          const { postalLocation, province, district, state } = postalData
+          const formattedAddress = [postalLocation, province, district, state].filter(Boolean).join(", ")
+
+          // Only update if address is empty or user confirms
+          if (!senderAddress) {
+            setSenderAddress(formattedAddress)
+          }
+        }
+      }
+    }
+
+    updateSenderAddress()
+  }, [senderZipCode, senderCountry])
+
+  // Auto-fill receiver address when zip code changes
+  useEffect(() => {
+    const updateReceiverAddress = async () => {
+      if (receiverZipCode && receiverZipCode.length >= 4 && receiverCountry) {
+        const countryCode = getCountryCode(receiverCountry)
+        if (!countryCode) return
+
+        const postalData = await fetchPostalData(receiverZipCode, countryCode)
+        if (postalData) {
+          const { postalLocation, province, district, state } = postalData
+          const formattedAddress = [postalLocation, province, district, state].filter(Boolean).join(", ")
+
+          // Only update if address is empty
+          if (!receiverAddress) {
+            setReceiverAddress(formattedAddress)
+          }
+        }
+      }
+    }
+
+    updateReceiverAddress()
+  }, [receiverZipCode, receiverCountry])
 
   // Calculate total chargeable weight when boxes change
   useEffect(() => {
@@ -201,8 +332,15 @@ export default function AWBForm({ isEdit = false, awb }) {
   // Fetch customers from API
   const fetchCustomers = async () => {
     try {
+      const userType = localStorage.getItem("userType")
+      const userId = localStorage.getItem("id")
       setLoading(true)
-      const response = await axios.get("/api/customer")
+      const response = await axios.get("/api/customer", {
+        headers: {
+          userType,
+          userId,
+        },
+      })
       setCustomers(response.data)
     } catch (error) {
       console.error("Error fetching customers:", error)
@@ -210,6 +348,35 @@ export default function AWBForm({ isEdit = false, awb }) {
       setLoading(false)
     }
   }
+
+  // Get country code from country name
+  const getCountryCode = (countryName) => {
+    return countryCodeMap[countryName]?.code || ""
+  }
+
+  // Get calling code from country name
+  const getCallingCode = (countryName) => {
+    return countryCodeMap[countryName]?.callingCode || ""
+  }
+
+  // Format contact number with country code
+  const formatContactWithCountryCode = (contact, countryCode) => {
+    if (!contact || !countryCode) return contact
+
+    // Remove any existing country code if present
+    let cleanContact = contact
+    if (cleanContact.startsWith(countryCode)) {
+      cleanContact = cleanContact.substring(countryCode.length).trim()
+    }
+
+    // Remove any non-digit characters
+    cleanContact = cleanContact.replace(/[^\d]/g, "")
+
+    // Add the country code
+    return `${countryCode} ${cleanContact}`
+  }
+
+  // Get invoice number from API
 
   // Get invoice number from API
   const getInvoiceNumber = async () => {
@@ -398,7 +565,7 @@ export default function AWBForm({ isEdit = false, awb }) {
               type,
               weight: totalChargeableWeight,
               country: receiverCountry,
-              profitPercent: 50, // Default profit percentage
+              profitPercent,
             },
           })
           .then((response) => ({
@@ -415,6 +582,7 @@ export default function AWBForm({ isEdit = false, awb }) {
 
       const results = await Promise.all(ratePromises)
       setRates(results)
+      console.log("Fetched rates:", results)
     } catch (error) {
       console.error("Error fetching rates:", error)
       toast.error("Failed to fetch rates. Please try again.")
@@ -440,6 +608,21 @@ export default function AWBForm({ isEdit = false, awb }) {
       const userType = localStorage.getItem("userType")
       const userId = localStorage.getItem("id")
 
+      // Format contact numbers with country codes
+      const senderCountryCode = getCallingCode(senderCountry)
+      const receiverCountryCode = getCallingCode(receiverCountry)
+
+      // Make sure we're not duplicating country codes
+      let formattedSenderContact = senderContact
+      if (senderCountryCode && !formattedSenderContact.startsWith(senderCountryCode)) {
+        formattedSenderContact = `${senderCountryCode} ${senderContact.replace(/[^\d]/g, "")}`
+      }
+
+      let formattedReceiverContact = receiverContact
+      if (receiverCountryCode && !formattedReceiverContact.startsWith(receiverCountryCode)) {
+        formattedReceiverContact = `${receiverCountryCode} ${receiverContact.replace(/[^\d]/g, "")}`
+      }
+
       const parcelData = {
         parcelType,
         staffId: userType === "admin" ? "admin" : userId,
@@ -455,7 +638,7 @@ export default function AWBForm({ isEdit = false, awb }) {
           address: senderAddress,
           country: senderCountry,
           zip: senderZipCode,
-          contact: senderContact,
+          contact: formattedSenderContact,
           kyc: {
             type: kycType,
             kyc,
@@ -468,21 +651,21 @@ export default function AWBForm({ isEdit = false, awb }) {
           address: receiverAddress,
           country: receiverCountry,
           zip: receiverZipCode,
-          contact: receiverContact,
+          contact: formattedReceiverContact,
           owner: localStorage.getItem("id"),
         },
         boxes,
         ...(isEdit
           ? {}
           : {
-            parcelStatus: [
-              {
-                status: "Shipment AWB Prepared - BOM HUB",
-                timestamp: new Date(),
-                comment: "",
-              },
-            ],
-          }),
+              parcelStatus: [
+                {
+                  status: "Shipment AWB Prepared - BOM HUB",
+                  timestamp: new Date(),
+                  comment: "",
+                },
+              ],
+            }),
         // Add selected rate information if available
         ...(selectedRate && {
           rateInfo: {
@@ -686,16 +869,25 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </Button>
               </div>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="senderAddress">Sender Address*</Label>
-              <Textarea
-                id="senderAddress"
-                placeholder="Sender Address"
-                value={senderAddress}
-                onChange={(e) => setSenderAddress(e.target.value)}
-                rows={4}
-                required
-              />
+              <Label htmlFor="senderZipCode">Sender Zip Code*</Label>
+              <div className="relative">
+                <Input
+                  id="senderZipCode"
+                  type="text"
+                  placeholder="Sender Zip Code"
+                  value={senderZipCode}
+                  onChange={(e) => setSenderZipCode(e.target.value)}
+                  required
+                  className="pr-10"
+                />
+                {senderZipCode && senderZipCode.length >= 5 && (
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <span className="text-xs text-green-600">Lookup</span>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="senderCountry">Sender Country*</Label>
@@ -713,26 +905,35 @@ export default function AWBForm({ isEdit = false, awb }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="senderZipCode">Sender Zip Code*</Label>
-              <Input
-                id="senderZipCode"
-                type="text"
-                placeholder="Sender Zip Code"
-                value={senderZipCode}
-                onChange={(e) => setSenderZipCode(e.target.value)}
+              <Label htmlFor="senderAddress">Sender Address*</Label>
+              <Textarea
+                id="senderAddress"
+                placeholder="Sender Address"
+                value={senderAddress}
+                onChange={(e) => setSenderAddress(e.target.value)}
+                rows={4}
                 required
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="senderContact">Sender Contact*</Label>
-              <Input
-                id="senderContact"
-                type="text"
-                placeholder="Sender Contact"
-                value={senderContact}
-                onChange={(e) => setSenderContact(e.target.value)}
-                required
-              />
+              <div className="flex">
+                {senderCountry && (
+                  <div className="flex items-center px-3 border border-r-0 rounded-l-md bg-gray-50 text-sm text-gray-600">
+                    {getCallingCode(senderCountry)}
+                  </div>
+                )}
+                <Input
+                  id="senderContact"
+                  type="text"
+                  placeholder="Contact Number"
+                  value={senderContact}
+                  onChange={(e) => setSenderContact(e.target.value)}
+                  required
+                  className={senderCountry ? "rounded-l-none" : ""}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Sender KYC Type*</Label>
@@ -802,17 +1003,6 @@ export default function AWBForm({ isEdit = false, awb }) {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="receiverAddress">Receiver Address*</Label>
-              <Textarea
-                id="receiverAddress"
-                placeholder="Receiver Address"
-                value={receiverAddress}
-                onChange={(e) => setReceiverAddress(e.target.value)}
-                rows={4}
-                required
-              />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="receiverCountry">Receiver Country*</Label>
               <Select value={receiverCountry} onValueChange={setReceiverCountry}>
                 <SelectTrigger>
@@ -829,25 +1019,52 @@ export default function AWBForm({ isEdit = false, awb }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="receiverZipCode">Receiver Zip Code*</Label>
-              <Input
-                id="receiverZipCode"
-                type="text"
-                placeholder="Receiver Zip Code"
-                value={receiverZipCode}
-                onChange={(e) => setReceiverZipCode(e.target.value)}
+              <div className="relative">
+                <Input
+                  id="receiverZipCode"
+                  type="text"
+                  placeholder="Receiver Zip Code"
+                  value={receiverZipCode}
+                  onChange={(e) => setReceiverZipCode(e.target.value)}
+                  required
+                  className="pr-10"
+                />
+                {receiverZipCode && receiverZipCode.length >= 5 && (
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <span className="text-xs text-green-600">Lookup</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="receiverAddress">Receiver Address*</Label>
+              <Textarea
+                id="receiverAddress"
+                placeholder="Receiver Address"
+                value={receiverAddress}
+                onChange={(e) => setReceiverAddress(e.target.value)}
+                rows={4}
                 required
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="receiverContact">Receiver Contact*</Label>
-              <Input
-                id="receiverContact"
-                type="text"
-                placeholder="Receiver Contact"
-                value={receiverContact}
-                onChange={(e) => setReceiverContact(e.target.value)}
-                required
-              />
+              <div className="flex">
+                {receiverCountry && (
+                  <div className="flex items-center px-3 border border-r-0 rounded-l-md bg-gray-50 text-sm text-gray-600">
+                    {getCallingCode(receiverCountry)}
+                  </div>
+                )}
+                <Input
+                  id="receiverContact"
+                  type="text"
+                  placeholder="Contact Number"
+                  value={receiverContact}
+                  onChange={(e) => setReceiverContact(e.target.value)}
+                  required
+                  className={receiverCountry ? "rounded-l-none" : ""}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1154,7 +1371,7 @@ export default function AWBForm({ isEdit = false, awb }) {
         </Card>
 
         <div className="flex justify-end">
-          <Button type="submit" className="bg-[#E31E24] hover:bg-[#C71D23] text-white" disabled={loading}>
+          <Button type="submit" className="bg-[#E31E24] hover:bg-[#C71D23] text-white">
             {loading ? "Processing..." : isEdit ? "Update AWB" : "Create AWB"}
           </Button>
         </div>
@@ -1294,22 +1511,24 @@ export default function AWBForm({ isEdit = false, awb }) {
                     <CardContent className="py-4">
                       {rate.success ? (
                         <div className="space-y-4">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="grid grid-cols-3 gap-4">
                             <div>
-                              <p className="text-sm text-muted-foreground">Base Rate</p>
-                              <p className="text-lg font-semibold">₹{rate.baseCharge}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Fuel Charges</p>
-                              <p className="text-lg font-semibold">₹{rate.fuelCharges}</p>
+                              <p className="text-sm text-muted-foreground">Sub Total</p>
+                              <p className="text-lg font-semibold">
+                                ₹{rate.total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                              </p>
                             </div>
                             <div>
                               <p className="text-sm text-muted-foreground">GST (18%)</p>
-                              <p className="text-lg font-semibold">₹{Math.round(rate.GST)}</p>
+                              <p className="text-lg font-semibold">
+                                ₹{Math.round(rate.GST).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                              </p>
                             </div>
                             <div>
                               <p className="text-sm text-muted-foreground">Total</p>
-                              <p className="text-xl font-bold text-[#232C65]">₹{rate.totalWithGST}</p>
+                              <p className="text-xl font-bold text-[#232C65]">
+                                ₹{rate.totalWithGST.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                              </p>
                             </div>
                           </div>
 
@@ -1357,18 +1576,18 @@ export default function AWBForm({ isEdit = false, awb }) {
                         </CardHeader>
                         <CardContent className="py-4">
                           <div className="space-y-4">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
                               <div>
-                                <p className="text-sm text-muted-foreground">Base Rate</p>
-                                <p className="text-lg font-semibold">₹{rate.baseCharge}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Fuel Charges</p>
-                                <p className="text-lg font-semibold">₹{rate.fuelCharges}</p>
+                                <p className="text-sm text-muted-foreground">Sub Total</p>
+                                <p className="text-lg font-semibold">
+                                  ₹{rate.total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                                </p>
                               </div>
                               <div>
                                 <p className="text-sm text-muted-foreground">GST (18%)</p>
-                                <p className="text-lg font-semibold">₹{Math.round(rate.GST)}</p>
+                                <p className="text-lg font-semibold">
+                                  ₹{Math.round(rate.GST).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                                </p>
                               </div>
                               <div>
                                 <p className="text-sm text-muted-foreground">Total</p>

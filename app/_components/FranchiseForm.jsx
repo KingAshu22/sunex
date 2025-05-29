@@ -16,6 +16,17 @@ import { Countries } from "../constants/country"
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters long" }),
+  firmName: z.string().optional(),
+  contact: z.number().min(10, { message: "Contact number must be at least 10 digits long" }),
+  address: z.string().min(5, { message: "Address must be at least 5 characters long" }),
+  isBranch: z.string().optional(),
+  branchOf: z.string().optional(),
+  panNo: z.string().optional(),
+  aadhaarNo: z.string().optional(),
+  gstNo: z.string().optional(),
+  bankAccountName: z.string().optional(),
+  bankAccountNumber: z.string().optional(),
+  bankIfscCode: z.string().optional(),
   code: z.string().min(3, { message: "Code must be at least 3 characters long" }),
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(8, { message: "Password must be at least 8 characters long" }),
@@ -41,6 +52,17 @@ export default function FranchiseForm({ isEdit = false, franchise }) {
     defaultValues: {
       name: franchise?.name || "",
       code: franchise?.code || "",
+      firmName: franchise?.firmName || "",
+      contact: franchise?.contact || "",
+      address: franchise?.address || "",
+      isBranch: franchise?.isBranch || "",
+      branchOf: franchise?.branchOf || "",
+      panNo: franchise?.panNo || "",
+      aadhaarNo: franchise?.aadhaarNo || "",
+      gstNo: franchise?.gstNo || "",
+      bankAccountName: franchise?.bankAccountName || "",
+      bankAccountNumber: franchise?.bankAccountNumber || "",
+      bankIfscCode: franchise?.bankIfscCode || "",
       email: franchise?.email || "",
       password: franchise?.password || "",
       rates: franchise?.rates || [{ country: "Rest of World", percent: "" }],
@@ -155,6 +177,20 @@ export default function FranchiseForm({ isEdit = false, franchise }) {
           >
             <FormField
               control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter Franchise name" autoComplete="off" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="code"
               render={({ field }) => (
                 <FormItem>
@@ -166,14 +202,175 @@ export default function FranchiseForm({ isEdit = false, franchise }) {
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
-              name="name"
+              name="firmName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel>Firm Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter Franchise name" autoComplete="off" {...field} />
+                    <Input placeholder="Enter Firm name" autoComplete="off" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="contact"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contact Number</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="tel"
+                      placeholder="Enter contact number"
+                      autoComplete="off"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(e.target.value === "" ? "" : Number.parseInt(e.target.value, 10) || "")
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Address</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter address" autoComplete="off" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="isBranch"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Is Branch?</FormLabel>
+                  <FormControl>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Branch Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Yes">Yes</SelectItem>
+                        <SelectItem value="No">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {form.watch("isBranch") === "Yes" && (
+              <FormField
+                control={form.control}
+                name="branchOf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Branch Of</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter parent franchise code" autoComplete="off" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            <FormField
+              control={form.control}
+              name="panNo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>PAN Number</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter PAN number" autoComplete="off" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="aadhaarNo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Aadhaar Number</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter Aadhaar number" autoComplete="off" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="gstNo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>GST Number</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter GST number" autoComplete="off" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="bankAccountName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bank Account Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter bank account name" autoComplete="off" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="bankAccountNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bank Account Number</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter bank account number"
+                      autoComplete="off"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="bankIfscCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bank IFSC Code</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter bank IFSC code" autoComplete="off" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

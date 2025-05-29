@@ -211,6 +211,12 @@ export default function AWBView({ params }) {
                 }
               />
               <InfoItem label="Parcel Type" value={awbData?.parcelType} />
+              {/* <InfoItem
+                label="Amount"
+                value={
+                  "₹ 600" // Assuming a fixed amount for demonstration
+                }
+              /> */}
               <InfoItem
                 label="Status"
                 value={

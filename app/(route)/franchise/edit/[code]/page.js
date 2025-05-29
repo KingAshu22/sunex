@@ -3,37 +3,37 @@
 import { useState, useEffect, use } from "react";
 import axios from "axios";
 import withAuth from "@/lib/withAuth";
-import ClientRegisterForm from "@/app/_components/ClientForm";
+import FranchiseForm from "@/app/_components/FranchiseForm";
 
-const EditClient = ({ params }) => {
+const EditFranchise = ({ params }) => {
     const { code } = use(params);
     console.log("Code: " + code);
 
-    const [client, setClient] = useState(null);
+    const [franchise, setFranchise] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        console.log("Client Data", client);
-    }, [client]);
+        console.log("Franchise Data", franchise);
+    }, [franchise]);
 
     useEffect(() => {
-        const fetchClient = async () => {
-            console.log(`Client fetching data ${code}`);
+        const fetchFranchise = async () => {
+            console.log(`Franchise fetching data ${code}`);
             try {
                 const response = await axios.get(
-                    `/api/clients/${code}`
+                    `/api/franchises/${code}`
                 );
                 const data = response.data;
-                setClient(data[0]);
+                setFranchise(data[0]);
                 setLoading(false);
             } catch (err) {
-                setError("Failed to fetch Client data");
+                setError("Failed to fetch Franchise data");
                 setLoading(false);
             }
         };
 
-        fetchClient();
+        fetchFranchise();
     }, []);
 
     if (loading) return <div className="text-center mt-8">Loading...</div>;
@@ -42,9 +42,9 @@ const EditClient = ({ params }) => {
 
     return (
         <div className="min-h-screen flex items-center justify-center">
-            <ClientRegisterForm isEdit={true} client={client} />
+            <FranchiseForm isEdit={true} franchise={franchise} />
         </div>
     );
 };
 
-export default withAuth(EditClient);
+export default withAuth(EditFranchise);

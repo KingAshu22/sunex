@@ -13,7 +13,7 @@ function AWBTable() {
   const [error, setError] = useState(null);
 
   const userType = localStorage.getItem("userType");
-  const userId = localStorage.getItem("id");
+  const userId = localStorage.getItem("code");
 
   useEffect(() => {
     fetchAwbs();

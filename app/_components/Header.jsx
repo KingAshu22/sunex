@@ -46,6 +46,7 @@ const Header = () => {
     localStorage.removeItem("name");
     localStorage.removeItem("authExpiry");
     localStorage.removeItem("userType");
+    localStorage.removeItem("code");
     router.push("/signin");
   };
 

@@ -16,7 +16,7 @@ function Dashboard() {
   const fetchAWBData = async () => {
     try {
       const userType = localStorage.getItem("userType");
-      const userId = localStorage.getItem("id");
+      const userId = localStorage.getItem("code");
 
       const response = await axios.get("/api/awb", {
         headers: {

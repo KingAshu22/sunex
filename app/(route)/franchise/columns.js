@@ -21,14 +21,14 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
-const deleteClient = async (code) => {
+const deleteFranchise = async (code) => {
   try {
     await axios.delete(
-      `/api/clients/${code}`,
+      `/api/franchises/${code}`,
       { withCredentials: true }
     );
   } catch (error) {
-    console.error("Error Deleting AWB:", error);
+    console.error("Error Deleting Franchise:", error);
   }
 };
 
@@ -94,7 +94,7 @@ export const columns = [
         <div className="flex flex-rows gap-2">
           <Button
             className="px-2 py-1 bg-blue-800"
-            onClick={() => window.open(`/clients/edit/${code}`)}
+            onClick={() => window.open(`/franchise/edit/${code}`)}
           >
             <Pencil className="w-[20px] h-[20px]" />
           </Button>
@@ -113,7 +113,7 @@ export const columns = [
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => {
-                    deleteClient(code);
+                    deleteFranchise(code);
                   }}
                 >
                   Continue

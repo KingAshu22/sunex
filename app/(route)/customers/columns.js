@@ -25,7 +25,7 @@ import { useEffect, useState } from "react";
 const deleteClient = async (code) => {
   try {
     await axios.delete(
-      `/api/clients/${code}`,
+      `/api/customer/${code}`,
       { withCredentials: true }
     );
   } catch (error) {
@@ -146,7 +146,7 @@ export const columns = [
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => {
-                    deleteClient(code);
+                    deleteClient(_id);
                   }}
                 >
                   Continue

@@ -18,8 +18,15 @@ function CustomersTable() {
   const fetchCustomers = async () => {
     setLoading(true);
     setError(null);
+    const userType = localStorage.getItem("userType");
+  const userId = localStorage.getItem("id");
     try {
-      const response = await axios.get("/api/customer");
+      const response = await axios.get("/api/customer", {
+        headers: {
+          userType,
+          userId,
+        },
+    });
       console.log(response.data);
       setCustomers(response.data);
     } catch (error) {
