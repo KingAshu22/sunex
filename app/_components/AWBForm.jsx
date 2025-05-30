@@ -89,6 +89,8 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   // Sender details
   const [senderName, setSenderName] = useState(awb?.sender?.name || "")
+  const [senderCompanyName, setSenderCompanyName] = useState(awb?.sender?.companyName || "")
+  const [senderEmail, setSenderEmail] = useState(awb?.sender?.email || "")
   const [senderAddress, setSenderAddress] = useState(awb?.sender?.address || "")
   const [senderCountry, setSenderCountry] = useState(awb?.sender?.country || "India")
   const [senderZipCode, setSenderZipCode] = useState(awb?.sender?.zip || "")
@@ -100,6 +102,8 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   // Receiver details
   const [receiverName, setReceiverName] = useState(awb?.receiver?.name || "")
+  const [receiverCompanyName, setReceiverCompanyName] = useState(awb?.receiver?.companyName || "")
+  const [receiverEmail, setReceiverEmail] = useState(awb?.receiver?.email || "")
   const [receiverAddress, setReceiverAddress] = useState(awb?.receiver?.address || "")
   const [receiverCountry, setReceiverCountry] = useState(awb?.receiver?.country || "")
   const [receiverZipCode, setReceiverZipCode] = useState(awb?.receiver?.zip || "")
@@ -198,6 +202,8 @@ export default function AWBForm({ isEdit = false, awb }) {
     if (senderName) {
       const customer = customers.find((c) => c.name === senderName)
       if (customer) {
+        setSenderCompanyName(customer.companyName || "")
+        setSenderEmail(customer.email || "")
         setSenderAddress(customer.address || "")
         setSenderCountry(customer.country || "India")
         setSenderZipCode(customer.zip || "")
@@ -214,6 +220,8 @@ export default function AWBForm({ isEdit = false, awb }) {
     if (receiverName) {
       const customer = customers.find((c) => c.name === receiverName)
       if (customer) {
+        setReceiverCompanyName(customer.companyName || "")
+        setReceiverEmail(customer.email || "")
         setReceiverAddress(customer.address || "")
         setReceiverCountry(customer.country || "")
         setReceiverZipCode(customer.zip || "")
@@ -227,6 +235,7 @@ export default function AWBForm({ isEdit = false, awb }) {
     try {
       const response = await axios.get(`https://api.worldpostallocations.com/pincode`, {
         params: {
+          apikey: process.env.NEXT_PUBLIC_POSTAL_API_KEY,
           postalcode: postalCode,
           countrycode: countryCode,
         },
@@ -635,6 +644,8 @@ export default function AWBForm({ isEdit = false, awb }) {
         forwardingLink,
         sender: {
           name: senderName,
+          companyName: senderCompanyName,
+          email: senderEmail,
           address: senderAddress,
           country: senderCountry,
           zip: senderZipCode,
@@ -648,6 +659,8 @@ export default function AWBForm({ isEdit = false, awb }) {
         },
         receiver: {
           name: receiverName,
+          companyName: receiverCompanyName,
+          email: receiverEmail,
           address: receiverAddress,
           country: receiverCountry,
           zip: receiverZipCode,
@@ -871,6 +884,27 @@ export default function AWBForm({ isEdit = false, awb }) {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="senderCompanyName">Company Name</Label>
+              <Input
+                id="senderCompanyName"
+                placeholder="Company Name"
+                value={senderCompanyName}
+                onChange={(e) => setSenderCompanyName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="senderEmail">Email</Label>
+              <Input
+                id="senderEmail"
+                type="email"
+                placeholder="Email Address"
+                value={senderEmail}
+                onChange={(e) => setSenderEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="senderZipCode">Sender Zip Code*</Label>
               <div className="relative">
                 <Input
@@ -1002,6 +1036,28 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </Button>
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="receiverCompanyName">Company Name</Label>
+              <Input
+                id="receiverCompanyName"
+                placeholder="Company Name"
+                value={receiverCompanyName}
+                onChange={(e) => setReceiverCompanyName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="receiverEmail">Email</Label>
+              <Input
+                id="receiverEmail"
+                type="email"
+                placeholder="Email Address"
+                value={receiverEmail}
+                onChange={(e) => setReceiverEmail(e.target.value)}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="receiverCountry">Receiver Country*</Label>
               <Select value={receiverCountry} onValueChange={setReceiverCountry}>

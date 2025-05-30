@@ -43,6 +43,8 @@ export async function POST(req) {
 
     const customer1 = new Customer({
       name: data.sender.name,
+      companyName: data.sender.companyName,
+      email: data.sender.email,
       address: data.sender.address,
       country: data.sender.country,
       zip: data.sender.zip,
@@ -55,6 +57,8 @@ export async function POST(req) {
 
     const customer2 = new Customer({
       name: data.receiver.name,
+      companyName: data.receiver.companyName,
+      email: data.receiver.email,
       address: data.receiver.address,
       country: data.receiver.country,
       zip: data.receiver.zip,
