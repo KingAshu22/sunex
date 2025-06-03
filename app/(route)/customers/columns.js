@@ -22,10 +22,10 @@ import {
 import axios from "axios";
 import { useEffect, useState } from "react";
 
-const deleteClient = async (code) => {
+const deleteClient = async (_id) => {
   try {
     await axios.delete(
-      `/api/customer/${code}`,
+      `/api/customer/${_id}`,
       { withCredentials: true }
     );
   } catch (error) {

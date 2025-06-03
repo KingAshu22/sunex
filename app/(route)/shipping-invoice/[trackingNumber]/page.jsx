@@ -307,9 +307,11 @@ export default function ShippingInvoicePage() {
                         <div className="border border-gray-300 p-1 rounded-lg">
                             <h2 className="font-bold mb-2">Sender:</h2>
                             <p className="font-bold uppercase">{awbData.sender?.name}</p>
+                            {awbData.sender?.companyName && <p className="font-bold uppercase">C/O {awbData.sender?.companyName}</p>}
                             <p>{awbData.sender?.address}</p>
-                            <p>
-                                {awbData.sender?.zip}, {awbData.sender?.country}
+                            <p className="flex flex-row gap-2">
+                                <strong>Zip Code:</strong> {awbData.sender?.zip}
+                                <strong>Country:</strong>{awbData.sender?.country}
                             </p>
                             <p>
                                 <strong>Cont No:</strong> {awbData.sender?.contact}
@@ -318,15 +320,17 @@ export default function ShippingInvoicePage() {
                                 <strong>Email:</strong> {awbData.sender?.email || "yourship.sunexpress@gmail.com"}
                             </p>
                             <p>
-                                <strong>{awbData.sender.kyc.type}</strong> {awbData.sender.kyc.kyc}
+                                <strong>{awbData.sender.kyc.type}</strong> {awbData.sender.kyc.kyc} 
                             </p>
                         </div>
                         <div className="border border-gray-300 rounded-lg p-1">
                             <h2 className="font-bold mb-2">Receiver:</h2>
                             <p className="font-bold uppercase">{awbData.receiver?.name}</p>
+                            {awbData.receiver?.companyName && <p className="font-bold uppercase">C/O {awbData.receiver?.companyName}</p>}
                             <p>{awbData.receiver?.address}</p>
-                            <p>
-                                {awbData.receiver?.zip}, {awbData.receiver?.country}
+                            <p className="flex flex-row gap-2">
+                                <strong>Zip Code:</strong> {awbData.receiver?.zip}
+                                <strong>Country:</strong>{awbData.receiver?.country}
                             </p>
                             <p>
                                 <strong>Cont No:</strong> {awbData.receiver?.contact}
@@ -337,7 +341,7 @@ export default function ShippingInvoicePage() {
                         </div>
                     </div>
 
-                    <div className="h-[578px]">
+                    <div className="h-[540px]">
                         <table className="w-full border-collapse mb-2 text-[12px]">
                             <thead>
                                 <tr className="bg-gray-100">
