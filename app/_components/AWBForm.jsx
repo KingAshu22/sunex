@@ -199,7 +199,7 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   // Auto-fill sender details when sender name changes
   useEffect(() => {
-    if (senderName) {
+    if (senderName && !isEdit) {
       const customer = customers.find((c) => c.name === senderName)
       if (customer) {
         setSenderCompanyName(customer.companyName || "")
@@ -217,7 +217,7 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   // Auto-fill receiver details when receiver name changes
   useEffect(() => {
-    if (receiverName) {
+    if (receiverName && !isEdit) {
       const customer = customers.find((c) => c.name === receiverName)
       if (customer) {
         setReceiverCompanyName(customer.companyName || "")
