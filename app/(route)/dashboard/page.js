@@ -71,6 +71,14 @@ function Dashboard() {
             <p className="text-4xl font-bold">Get Rates</p>
           </CardContent>
         </Card>
+        <Card onClick={() => window.location.href = "/pdf-rate"}>
+          <CardHeader>
+            <CardTitle>PDF Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">Get PDF Rates</p>
+          </CardContent>
+        </Card>
       </div>
       <Card>
         <CardHeader>
