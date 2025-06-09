@@ -9,6 +9,7 @@ const AwbSchema = new Schema({
   trackingNumber: String,
   forwardingNumber: String,
   forwardingLink: String,
+  shippingCurrency: String,
   via: String,
   sender: UserSchema,
   receiver: UserSchema,

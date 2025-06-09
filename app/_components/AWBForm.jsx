@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardFooter, CardTitle } from "@/components/ui/card"
 import { Countries, countryCodeMap } from "@/app/constants/country"
 import axios from "axios"
 import { useRouter } from "next/navigation"
@@ -86,6 +86,9 @@ export default function AWBForm({ isEdit = false, awb }) {
   //Forwarding Details
   const [forwardingNo, setForwardingNo] = useState(awb?.forwardingNo || "")
   const [forwardingLink, setForwardingLink] = useState(awb?.forwardingLink || "")
+
+  const [shippingCurrency, setShippingCurrency] = useState(awb?.shippingCurrency || "₹")
+  const [totalShippingValue, setTotalShippingValue] = useState(awb?.totalShippingValue || 0);
 
   // Sender details
   const [senderName, setSenderName] = useState(awb?.sender?.name || "")
@@ -306,7 +309,17 @@ export default function AWBForm({ isEdit = false, awb }) {
       return acc + chargeableWeight
     }, 0)
 
-    setTotalChargeableWeight(Math.round(totalWeight).toString())
+    setTotalChargeableWeight((totalWeight).toFixed(2).toString())
+
+    const totalShippingValue = boxes.reduce((acc, box) => {
+      return acc + box.items.reduce((itemAcc, item) => {
+        const itemValue = Number.parseFloat(item.price) || 0
+        const itemQuantity = Number.parseInt(item.quantity, 10) || 0
+        return itemAcc + itemValue * itemQuantity
+      }, 0)
+    }, 0);
+
+    setTotalShippingValue(parseFloat(totalShippingValue))
   }, [boxes])
 
   // Reset selected rate when weight changes
@@ -446,8 +459,18 @@ export default function AWBForm({ isEdit = false, awb }) {
           const height = Number(box.height) || 0
           const actualWeight = Number(box.actualWeight) || 0
 
-          const dimensionalWeight = Math.round((length * breadth * height) / 5000)
-          const chargeableWeight = Math.max(actualWeight, dimensionalWeight)
+          const dimensionalWeight = ((length * breadth * height) / 5000).toFixed(3)
+          const chargeableWeightRaw = Math.max(actualWeight, dimensionalWeight);
+
+          let chargeableWeight;
+
+          if (chargeableWeightRaw < 20) {
+            // Round to nearest 0.5 kg
+            chargeableWeight = Math.ceil(chargeableWeightRaw * 2) / 2;
+          } else {
+            // Round to nearest 1 kg
+            chargeableWeight = Math.ceil(chargeableWeightRaw);
+          }
 
           updatedBoxes[index].dimensionalWeight = dimensionalWeight
           updatedBoxes[index].chargeableWeight = chargeableWeight
@@ -642,6 +665,7 @@ export default function AWBForm({ isEdit = false, awb }) {
         shipmentType,
         forwardingNo,
         forwardingLink,
+        shippingCurrency,
         sender: {
           name: senderName,
           companyName: senderCompanyName,
@@ -1129,7 +1153,6 @@ export default function AWBForm({ isEdit = false, awb }) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-2xl text-[#232C65]">Box Details</CardTitle>
-            <div className="text-sm font-medium">Total Chargeable Weight: {totalChargeableWeight} kg</div>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Box Count Input */}
@@ -1264,6 +1287,18 @@ export default function AWBForm({ isEdit = false, awb }) {
                     {boxes.map((box, boxIndex) => (
                       <Card key={`items-${boxIndex}`} className="border border-gray-200">
                         <CardHeader className="py-3">
+                                      <div className="space-y-2">
+                                        <Label>Shipping Currency</Label>
+                                        <Select value={shippingCurrency} onValueChange={setShippingCurrency}>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select Shipping Currency" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="₹">₹</SelectItem>
+                                            <SelectItem value="$">$</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
                           <CardTitle className="text-xl text-[#232C65]">Box {boxIndex + 1} Items</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -1426,6 +1461,10 @@ export default function AWBForm({ isEdit = false, awb }) {
           </CardContent>
         </Card>
 
+        <CardFooter className="flex flex-row justify-between">
+          <div className="text-sm font-medium bg-[#0ABAB5] text-white rounded-lg p-2">Total Chargeable Weight: {totalChargeableWeight} kg</div>
+          <div className="text-sm font-medium bg-[#4DA8DA] text-white rounded-lg p-2">Total Shipping Value: {shippingCurrency} {totalShippingValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</div>
+        </CardFooter>
         <div className="flex justify-end">
           <Button type="submit" className="bg-[#E31E24] hover:bg-[#C71D23] text-white">
             {loading ? "Processing..." : isEdit ? "Update AWB" : "Create AWB"}

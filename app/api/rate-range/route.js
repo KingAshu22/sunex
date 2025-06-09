@@ -40,7 +40,7 @@ export async function POST(req) {
 
     while (currentWeight <= endWeightFloat) {
       weights.push(currentWeight.toFixed(1))
-      currentWeight += 0.5
+      currentWeight += 1
     }
 
     // Fetch rates for all selected services
