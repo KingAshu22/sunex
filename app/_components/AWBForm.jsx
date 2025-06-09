@@ -1484,9 +1484,9 @@ export default function AWBForm({ isEdit = false, awb }) {
           <DialogFooter className="flex justify-center gap-2 sm:justify-center">
             <Button
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              onClick={() => router.push(`/awb/${trackingNumber}`)}
+              onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}
             >
-              View AWB
+              Print
             </Button>
             <Button className="bg-green-600 hover:bg-green-800 text-white" onClick={() => router.push(`/awb`)}>
               Back to AWB Table
