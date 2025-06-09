@@ -229,7 +229,11 @@ export default function ShippingInvoicePage() {
     }
 
     const totalAmount = calculateTotal()
-    const amountInWords = numberToWords(Math.round(totalAmount)) + " Rupees Only"
+    const amountInWords =
+        numberToWords(Math.round(totalAmount)) +
+        " " +
+        (awbData.shippingCurrency === "₹" ? "Rupees" : "Dollars") +
+        " Only";
 
     return (
         <>
@@ -320,7 +324,7 @@ export default function ShippingInvoicePage() {
                                 <strong>Email:</strong> {awbData.sender?.email || "yourship.sunexpress@gmail.com"}
                             </p>
                             <p>
-                                <strong>{awbData.sender.kyc.type}</strong> {awbData.sender.kyc.kyc} 
+                                <strong>{awbData.sender.kyc.type}</strong> {awbData.sender.kyc.kyc}
                             </p>
                         </div>
                         <div className="border border-gray-300 rounded-lg p-1">
@@ -367,10 +371,10 @@ export default function ShippingInvoicePage() {
                                             <td className="border border-gray-300 px-2 w-[80px] text-center">{item.hsnCode || "N/A"}</td>
                                             <td className="border border-gray-300 px-2 w-[20px]">{item.quantity}</td>
                                             <td className="border border-gray-300 px-2 w-[40px] whitespace-nowrap">
-                                                ₹{item.price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                {awbData.shippingCurrency || "₹"}{item.price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="border border-gray-300 px-2 w-[40px] whitespace-nowrap">
-                                                ₹
+                                                {awbData.shippingCurrency || "₹"}
                                                 {(Number(item.price) * Number(item.quantity)).toLocaleString("en-IN", {
                                                     minimumFractionDigits: 2,
                                                     maximumFractionDigits: 2,
@@ -384,7 +388,7 @@ export default function ShippingInvoicePage() {
                                         Total Amount:
                                     </td>
                                     <td className="border border-gray-300 px-2 whitespace-nowrap">
-                                        ₹{totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        {awbData.shippingCurrency || "₹"}{totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </td>
                                 </tr>
                                 <tr className="font-bold text-[12px]">
