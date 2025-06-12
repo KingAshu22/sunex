@@ -3,22 +3,26 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import axios from "axios"
-import { Loader2, Printer, FileText, Package } from "lucide-react"
+import { Loader2, Printer, FileText, Package, FileCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import JsBarcode from "jsbarcode"
 
 export default function CombinedShippingPage() {
   const { trackingNumber } = useParams()
   const [awbData, setAwbData] = useState(null)
+  const [formattedKycType, setFormattedKycType] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const invoiceRef = useRef(null)
   const labelRef = useRef(null)
   const [invoiceCopies, setInvoiceCopies] = useState(1)
   const [totalBoxes, setTotalBoxes] = useState(1)
+  const [authorizationType, setAuthorizationType] = useState("")
+  const [authorizationCopies, setAuthorizationCopies] = useState(1)
 
   useEffect(() => {
     const fetchAWBData = async () => {
@@ -28,6 +32,16 @@ export default function CombinedShippingPage() {
         const response = await axios.get(`/api/awb/${trackingNumber}`)
         setAwbData(response.data[0])
         setTotalBoxes(response.data[0]?.boxes.length || 1)
+        const kycTypeMap = {
+  "Aadhaar No - ": "Aadhaar Card",
+  "Pan No - ": "Pan Card",
+  "Passport No - ": "Passport",
+  "Driving License No - ": "Driving License",
+  "Voter ID Card No - ": "Voter ID Card",
+  "GST No - ": "GST Certificate",
+};
+
+  setFormattedKycType(kycTypeMap[response.data[0]?.sender?.kyc?.type] || response.data[0]?.sender?.kyc?.type || "");
         setLoading(false)
       } catch (err) {
         setError("Failed to fetch AWB data")
@@ -126,127 +140,126 @@ export default function CombinedShippingPage() {
       numberToWords(Math.round(totalAmount)) + " " + (awbData.shippingCurrency === "₹" ? "Rupees" : "Dollars") + " Only"
 
     return `
-            <div class="text-center mb-6">
-                <h1 class="text-2xl font-bold">SHIPPING INVOICE</h1>
-            </div>
+          <div class="text-center mb-6">
+              <h1 class="text-2xl font-bold">SHIPPING INVOICE</h1>
+          </div>
 
-            <div class="grid grid-cols-2 gap-4 mb-6 text-[12px]">
-                <div>
-                    <p><strong>Date:</strong> ${awbData.date ? format(new Date(awbData.date), "dd/MM/yyyy") : "N/A"}</p>
-                    <p><strong>Pre Carriage By:</strong> ${awbData.via || "N/A"}</p>
-                    <p><strong>Vessel/Flight No:</strong> ${awbData.forwardingNo || "N/A"}</p>
-                    <p><strong>Port of Discharge:</strong> ${awbData.sender?.country || "N/A"}</p>
-                    <p><strong>Country of Origin of Goods:</strong> ${awbData.sender?.country || "INDIA"}</p>
-                </div>
-                <div>
-                    <p><strong>EXP. REF-</strong> ${awbData.trackingNumber}</p>
-                    <p><strong>Place of Receipt by Pre-carrier:</strong></p>
-                    <p><strong>Port of Loading:</strong> ${awbData.sender?.country || "N/A"}</p>
-                    <p><strong>Final Destination:</strong> ${awbData.receiver?.country || "N/A"}</p>
-                    <p><strong>Country of Final Destination:</strong> ${awbData.receiver?.country || "N/A"}</p>
-                </div>
-            </div>
+          <div class="grid grid-cols-2 gap-4 mb-6 text-[12px]">
+              <div>
+                  <p><strong>Date:</strong> ${awbData.date ? format(new Date(awbData.date), "dd/MM/yyyy") : "N/A"}</p>
+                  <p><strong>Pre Carriage By:</strong> ${awbData.via || "N/A"}</p>
+                  <p><strong>Vessel/Flight No:</strong> ${awbData.forwardingNo || "N/A"}</p>
+                  <p><strong>Port of Discharge:</strong> ${awbData.sender?.country || "N/A"}</p>
+                  <p><strong>Country of Origin of Goods:</strong> ${awbData.sender?.country || "INDIA"}</p>
+              </div>
+              <div>
+                  <p><strong>EXP. REF-</strong> ${awbData.trackingNumber}</p>
+                  <p><strong>Place of Receipt by Pre-carrier:</strong></p>
+                  <p><strong>Port of Loading:</strong> ${awbData.sender?.country || "N/A"}</p>
+                  <p><strong>Final Destination:</strong> ${awbData.receiver?.country || "N/A"}</p>
+                  <p><strong>Country of Final Destination:</strong> ${awbData.receiver?.country || "N/A"}</p>
+              </div>
+          </div>
 
-            <div class="grid grid-cols-2 gap-2 mb-6 text-[12px]">
-                <div class="border border-gray-300 p-1 rounded-lg">
-                    <h2 class="font-bold mb-2">Sender:</h2>
-                    <p class="font-bold uppercase">${awbData.sender?.name}</p>
-                    ${awbData.sender?.companyName ? `<p class="font-bold uppercase">C/O ${awbData.sender?.companyName}</p>` : ""}
-                    <p>${awbData.sender?.address}</p>
-                    <p class="flex flex-row gap-2">
-                        <strong>Zip Code:</strong> ${awbData.sender?.zip}
-                        <strong>Country:</strong>${awbData.sender?.country}
-                    </p>
-                    <p><strong>Cont No:</strong> ${awbData.sender?.contact}</p>
-                    <p><strong>Email:</strong> ${awbData.sender?.email || "yourship.sunexpress@gmail.com"}</p>
-                    <p><strong>${awbData.sender.kyc.type}</strong> ${awbData.sender.kyc.kyc}</p>
-                </div>
-                <div class="border border-gray-300 rounded-lg p-1">
-                    <h2 class="font-bold mb-2">Receiver:</h2>
-                    <p class="font-bold uppercase">${awbData.receiver?.name}</p>
-                    ${awbData.receiver?.companyName ? `<p class="font-bold uppercase">C/O ${awbData.receiver?.companyName}</p>` : ""}
-                    <p>${awbData.receiver?.address}</p>
-                    <p class="flex flex-row gap-2">
-                        <strong>Zip Code:</strong> ${awbData.receiver?.zip}
-                        <strong>Country:</strong>${awbData.receiver?.country}
-                    </p>
-                    <p><strong>Cont No:</strong> ${awbData.receiver?.contact}</p>
-                    <p><strong>Email:</strong> ${awbData.receiver?.email || "yourship.sunexpress@gmail.com"}</p>
-                </div>
-            </div>
+          <div class="grid grid-cols-2 gap-2 mb-6 text-[12px]">
+              <div class="border border-gray-300 p-1 rounded-lg">
+                  <h2 class="font-bold mb-2">Sender:</h2>
+                  <p class="font-bold uppercase">${awbData.sender?.name}</p>
+                  ${awbData.sender?.companyName ? `<p class="font-bold uppercase">C/O ${awbData.sender?.companyName}</p>` : ""}
+                  <p>${awbData.sender?.address}</p>
+                  <p class="flex flex-row gap-2">
+                      <strong>Zip Code:</strong> ${awbData.sender?.zip}
+                      <strong>Country:</strong>${awbData.sender?.country}
+                  </p>
+                  <p><strong>Cont No:</strong> ${awbData.sender?.contact}</p>
+                  <p><strong>Email:</strong> ${awbData.sender?.email || "yourship.sunexpress@gmail.com"}</p>
+                  <p><strong>${awbData.sender.kyc.type}</strong> ${awbData.sender.kyc.kyc}</p>
+              </div>
+              <div class="border border-gray-300 rounded-lg p-1">
+                  <h2 class="font-bold mb-2">Receiver:</h2>
+                  <p class="font-bold uppercase">${awbData.receiver?.name}</p>
+                  ${awbData.receiver?.companyName ? `<p class="font-bold uppercase">C/O ${awbData.receiver?.companyName}</p>` : ""}
+                  <p>${awbData.receiver?.address}</p>
+                  <p class="flex flex-row gap-2">
+                      <strong>Zip Code:</strong> ${awbData.receiver?.zip}
+                      <strong>Country:</strong>${awbData.receiver?.country}
+                  </p>
+                  <p><strong>Cont No:</strong> ${awbData.receiver?.contact}</p>
+                  <p><strong>Email:</strong> ${awbData.receiver?.email || "yourship.sunexpress@gmail.com"}</p>
+              </div>
+          </div>
 
-            <div class="h-[540px]">
-                <table class="w-full border-collapse mb-2 text-[12px]">
-                    <thead>
-                        <tr class="bg-gray-100">
-                            <th class="border border-gray-300 px-2 text-left w-[10px] whitespace-nowrap">Sr No.</th>
-                            <th class="border border-gray-300 px-2 text-left">Description of Goods</th>
-                            <th class="border border-gray-300 px-2 text-left w-[80px]">HSN Code</th>
-                            <th class="border border-gray-300 px-2 text-left w-[20px]">Quantity</th>
-                            <th class="border border-gray-300 px-2 text-left w-[40px]">Rate</th>
-                            <th class="border border-gray-300 px-2 text-left w-[40px]">Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${awbData.boxes
-                          ?.flatMap((box, boxIndex) => [
-                            `<tr class="bg-gray-200">
-                                <td colspan="6" class="border border-gray-300 py-0 font-bold text-center text-[10px]">
-                                    Box No ${boxIndex + 1}
-                                </td>
-                            </tr>`,
-                            ...box.items.map(
-                              (item, itemIndex) => `
-                                <tr>
-                                    <td class="border border-gray-300 px-2 w-[10px]">${itemIndex + 1}</td>
-                                    <td class="border border-gray-300 px-2">${item.name}</td>
-                                    <td class="border border-gray-300 px-2 w-[80px] text-center">${item.hsnCode || "N/A"}</td>
-                                    <td class="border border-gray-300 px-2 w-[20px]">${item.quantity}</td>
-                                    <td class="border border-gray-300 px-2 w-[40px] whitespace-nowrap">
-                                        ${awbData.shippingCurrency || "₹"}${item.price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </td>
-                                    <td class="border border-gray-300 px-2 w-[40px] whitespace-nowrap">
-                                        ${awbData.shippingCurrency || "₹"}${(Number(item.price) * Number(item.quantity)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </td>
-                                </tr>
-                            `,
-                            ),
-                          ])
-                          .join("")}
-                        <tr class="font-bold text-[12px]">
-                            <td colspan="5" class="border border-gray-300 p-0 text-[10px] whitespace-nowrap text-right pr-2">
-                                Total Amount:
-                            </td>
-                            <td class="border border-gray-300 px-2 whitespace-nowrap">
-                                ${awbData.shippingCurrency || "₹"}${totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                        </tr>
-                        <tr class="font-bold text-[12px]">
-                            <td class="border border-gray-300 p-0 text-[10px] whitespace-nowrap text-center">In Words:</td>
-                            <td colspan="5" class="border border-gray-300 px-2">${amountInWords}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+          <div class="">
+    <table class="w-full border-collapse mb-2 text-[12px]">
+        <thead>
+            <tr class="bg-gray-100">
+                <th class="border border-gray-300 px-2 text-left w-[10px] whitespace-nowrap">Sr No.</th>
+                <th class="border border-gray-300 px-2 text-left">Description of Goods</th>
+                <th class="border border-gray-300 px-2 text-left w-[80px]">HSN Code</th>
+                <th class="border border-gray-300 px-2 text-left w-[20px]">Quantity</th>
+                <th class="border border-gray-300 px-2 text-left w-[40px]">Rate</th>
+                <th class="border border-gray-300 px-2 text-left w-[40px]">Value</th>
+            </tr>
+        </thead>
+        <tbody style="vertical-align: top;">
+            ${awbData.boxes
+              ?.flatMap((box, boxIndex) => [
+                `<tr class="bg-gray-200">
+                    <td colspan="6" class="border border-gray-300 py-0 font-bold text-center text-[10px]">
+                        Box No ${boxIndex + 1}
+                    </td>
+                </tr>`,
+                ...box.items.map(
+                  (item, itemIndex) => `
+                    <tr>
+                        <td class="border border-gray-300 px-2 w-[10px]">${itemIndex + 1}</td>
+                        <td class="border border-gray-300 px-2">${item.name}</td>
+                        <td class="border border-gray-300 px-2 w-[80px] text-center">${item.hsnCode || "N/A"}</td>
+                        <td class="border border-gray-300 px-2 w-[20px]">${item.quantity}</td>
+                        <td class="border border-gray-300 px-2 w-[40px] whitespace-nowrap">
+                            ${awbData.shippingCurrency || "₹"}${item.price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td class="border border-gray-300 px-2 w-[40px] whitespace-nowrap">
+                            ${awbData.shippingCurrency || "₹"}${(Number(item.price) * Number(item.quantity)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                    </tr>
+                `,
+                ),
+              ])
+              .join("")}
+            <tr class="font-bold text-[12px]">
+                <td colspan="5" class="border border-gray-300 p-0 text-[10px] whitespace-nowrap text-right pr-2">
+                    Total Amount:
+                </td>
+                <td class="border border-gray-300 px-2 whitespace-nowrap">
+                    ${awbData.shippingCurrency || "₹"}${totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+            </tr>
+            <tr class="font-bold text-[12px]">
+                <td class="border border-gray-300 p-0 text-[10px] whitespace-nowrap text-center">In Words:</td>
+                <td colspan="5" class="border border-gray-300 px-2">${amountInWords}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
-            <div class="mt-2 pt-1 text-justify italic text-[12px] border-t border-gray-400">
-                <p class="font-bold">Declaration:</p>
-                <p>We certify that the information given above is true and correct to the best of our knowledge</p>
-            </div>
+          <div class="declaration-section mt-2 pt-1 text-justify italic text-[12px] border-t border-gray-400">
+              <p class="font-bold">Declaration:</p>
+              <p>We certify that the information given above is true and correct to the best of our knowledge</p>
+          </div>
 
-            <div class="mt-2 mr-4 text-right text-[12px]">
-                <p class="mr-12">Signature & Date</p>
-                <div class="h-10"></div>
-                <div class="border-t border-gray-400 w-48 ml-auto"></div>
-            </div>
-        `
+          <div class="signature-section mt-2 mr-4 text-right text-[12px]">
+              <p class="mr-12">Signature & Date</p>
+              <div class="h-10"></div>
+              <div class="border-t border-gray-400 w-48 ml-auto"></div>
+          </div>
+      `
   }
 
   const generateLabelHTML = (boxNumber) => {
     return `
             <div class="barcode-top-right">
-                <svg class="barcode-svg" data-box="${awbData?.trackingNumber}"></svg>
-                <p class="pr-1 whitespace-nowrap">Box No - ${boxNumber}/${awbData.boxes.length}</p>
+                <svg class="barcode-svg" data-box="${boxNumber}"></svg>
             </div>
             <div class="address-section">
                 <h2 class="font-bold mb-2">Receiver:</h2>
@@ -260,6 +273,252 @@ export default function CombinedShippingPage() {
                 <p>Cont No: ${awbData?.receiver?.contact || ""}</p>
             </div>
         `
+  }
+
+  const generateDHLAuthorizationHTML = () => {
+    return `
+        <div class="auth-header">
+            <h1 class="text-center font-bold text-lg mb-4">Authorization for Export shipment</h1>
+        </div>
+        
+        <div class="auth-content">
+            <p class="font-bold mb-2">To whomsoever it may concern</p>
+            
+            <p class="mb-2 text-justify">
+                I / we authorization to <strong>DHL Express (India) Pvt. Ltd. ('DHL')</strong>, including its group companies and their customs brokers 
+                and agents, to act as our agent for the purpose of arranging customs clearance at various customs location within 
+                India for all our Shipments, departing from India under the provisions of the various Acts, Rules, regulations and 
+                procedure as laid down under the regulatory environment of India to enable DHL to arrange clearance of Export 
+                shipment on my/our behalf.
+            </p>
+            
+            <p class="mb-2 text-justify">
+                I/We also give our consent and authorize DHL to generate, sign, submit and file on our behalf, in physical form or 
+                digitally, the various forms like e-way bill, shipping bill, and other forms, as and when required, under various 
+                statutes for undertaking the carriage, clearance or delivery of Shipment. I / we have been guided to abide by the 
+                statutory requirements applicable for our Shipments and to keep myself / ourselves updated with all applicable acts 
+                and regulations for my Shipments. I/We will be responsible for the declaration being made to regulators based on 
+                our document / instructions.
+            </p>
+            
+            <p class="mb-2 text-justify">
+                I/We further declare that our GSTIN / Know Your Customer ("KYC") are valid and we authorize DHL to use the same 
+                while undertaking transportation and clearance of our shipments on our behalf.
+            </p>
+            
+            <p class="mb-2 text-justify">
+                This authority letter shall hold good for all proceedings and can be produced before Customs and/or any statutory 
+                authority to confirm the authorization hereby given to DHL. The above authorization to DHL supersedes all previous 
+                authority letters issued in this behalf and shall remain valid, subsisting and continues until revoked in writing.
+            </p>
+            
+            <p class="mb-2">Thanking you,</p>
+            <p class="mb-2">Yours sincerely,</p>
+        </div>
+        
+        <div class="signature-section">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="company-section border-2 rounded-lg p-2">
+                    <div class="mb-2">
+                        <p class="mb-2"><strong>Company Name:${awbData?.sender?.companyName ? awbData?.sender?.companyName : "________________"}</strong></p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="mb-2"><strong>GSTIN:${awbData?.sender?.companyName ? awbData?.sender?.kyc.kyc : "________________"}</strong></p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="mb-2"><strong>Signature:_________________</strong></p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="mb-2"><strong>Name:______________________</strong></p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="mb-2"><strong>Designation:________________</strong></p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="mb-2"><strong>Date:${awbData?.sender?.companyName ? format(new Date(), "dd/MM/yyyy") : "________________"}</strong></p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="mb-2"><strong>Mobile No:${awbData?.sender?.companyName ? awbData?.sender?.contact : "________________"}</strong></p>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <div class="border border-gray-400 h-16 text-center flex items-center justify-center">
+                            <span class="text-gray-500">Company Stamp</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="individual-section border-2 rounded-lg p-2">
+                    <div class="mb-2">
+                        <p class="font-bold mb-2">Individual Shipper</p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="mb-2"><strong>Name:</strong> ${awbData?.sender?.companyName ? "________________" : awbData?.sender?.name}</p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="mb-2"><strong>KYC Document:</strong>  ${awbData?.sender?.companyName ? "________________" : formattedKycType}</p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="mb-2"><strong>KYC Document No:</strong>${awbData?.sender?.companyName ? "________________" : awbData?.sender?.kyc?.kyc}</p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="mb-2"><strong>Signature:__________________</strong></p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="mb-2"><strong>Date:<span class="underline underline-offset-2">${awbData?.sender?.companyName ? "________________" : format(new Date(), "dd/MM/yyyy")}</strong></p>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="mb-4"><strong>Mobile No:</strong>${awbData?.sender?.companyName ? "________________" : awbData?.sender?.contact}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `
+  }
+
+  const generateFedExAuthorizationHTML = () => {
+    return `
+    <span class="text-[12px]">
+        <div class="auth-header mb-6">
+            <div class="mb-2">
+                <p><strong>Date:</strong> ${format(new Date(), "dd/MM/yyyy")}</p>
+            </div>
+            
+            <div class="mb-2">
+                <p><strong>To,</strong></p>
+                <p class="mt-2">
+                    <strong>FedEx Express Transportation and Supply Chain Services (India) Pvt. Ltd.</strong><br>
+                    Boomerang, Unit 801, 8th Floor, A-Wing Chandivali Farm Road,<br>
+                    Andheri (E) Mumbai – 400072
+                </p>
+            </div>
+            
+            <h1 class="text-center font-bold text-lg mb-4">Export authorization with Know Your Customer document</h1>
+            
+            <div class="mb-2 text-center text-lg">
+                <p><strong>AWB #</strong>__________________________________</p>
+            </div>
+        </div>
+        
+        <div class="auth-content mb-2">
+            <p class="mb-2 text-justify">
+                We hereby authorize <strong>FedEx Express Transportation and Supply Chain Services (India) Pvt. Ltd</strong> 
+                (hereinafter FedEx which expression shall include their respective holding companies and their 
+                customs clearance agents) to:
+            </p>
+            
+            <div class="mb-2">
+                <p class="mb-2 text-justify">
+                    <strong>1)</strong> act as our authorized courier and/or agent to do all necessary acts on our behalf for 
+                    customs clearance including filing of documents, declarations and Shipping Bill for 
+                    clearance of all export shipments shipped by us from time to time through the courier, 
+                    express or formal customs clearance mode.
+                </p>
+                
+                <p class="mb-2 text-justify">
+                    <strong>2)</strong> file documents for export customs clearance of shipments based on the declaration and 
+                    information regarding the shipments provided to FedEx by us or in the absence of the 
+                    same, the information for import shipments provided to FedEx by the consignors for 
+                    delivery in India.
+                </p>
+            </div>
+            
+            <p class="mb-2 text-justify">
+                This authorization shall remain valid until revoked in writing and acknowledged by FedEx in 
+                writing and shall cover all our shipments sent by or addressed to our various offices / branches 
+                in India. This authorization may be produced and presented before any customs station in India 
+                as a formal authorization to your company for customs clearance of our shipments by you or 
+                your authorized agents.
+            </p>
+            
+            <p class="mb-2 font-bold">Please provide the following Know Your Customer (KYC) document, as applicable.</p>
+        </div>
+        
+        <div class="kyc-table mb-2">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="border border-gray-400 px-3 py-2 text-left font-bold">#</th>
+                        <th class="border border-gray-400 px-3 py-2 text-left font-bold">Category</th>
+                        <th class="border border-gray-400 px-3 py-2 text-left font-bold">Documents Required</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="border border-gray-400 px-3 py-2">1.</td>
+                        <td class="border border-gray-400 px-3 py-2">Individual</td>
+                        <td class="border border-gray-400 px-3 py-2">
+                            Any one of the following documents<br>
+                            □ Passport Copy with address page.<br>
+                            □ Adhaar Card<br>
+                            □ PAN Card<br>
+                            □ Voter ID Card
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="border border-gray-400 px-3 py-2">2.</td>
+                        <td class="border border-gray-400 px-3 py-2">Firms, company, institution registered Under GST Laws</td>
+                        <td class="border border-gray-400 px-3 py-2">
+                            □ GSTIN registration copy<br>
+                            □ IEC number
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="border border-gray-400 px-3 py-2">3.</td>
+                        <td class="border border-gray-400 px-3 py-2">Exempted/ non-registered firms, company, institution under GST Laws</td>
+                        <td class="border border-gray-400 px-3 py-2">
+                            □ PAN Card<br>
+                            □ IEC number
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="border border-gray-400 px-3 py-2">4.</td>
+                        <td class="border border-gray-400 px-3 py-2">Embassy/ U.N. Bodies/ Government entities</td>
+                        <td class="border border-gray-400 px-3 py-2">□ Unique Identification Number (UIN) copy</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="additional-info mb-2">
+            <p class="mb-2 text-justify">
+                <strong>IEC number is mandatory to file shipment for clearance.</strong> The name / branch address of company 
+                as on the invoice should match as with that on shipping documents accompanying the shipment
+            </p>
+            
+            <p class="mb-2 text-justify">
+                We/ I duly declare that the above document is the true copy and verifiable with original KYC 
+                document if called upon by customs / government authorities.
+            </p>
+        </div>
+        
+        <div class="signature-section">
+            <div class="grid grid-cols-2 gap-8">
+                <div>
+                    <p class="mb-2"><strong>Company Name:</strong></p>
+                    <p class="mb-2">${awbData?.sender?.companyName || ""}</p>
+                </div>
+                <div class="text-right">
+                    <div class="border border-gray-400 h-16 flex items-center justify-center">
+                        <span class="text-gray-500">Sign/Stamped by Authorized Signatory</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </span>
+    `
   }
 
   const generatePageLayout = (boxesOnPage, startBox) => {
@@ -337,7 +596,6 @@ export default function CombinedShippingPage() {
         ${generateInvoiceHTML()}
       </div>
     `
-      // Add page break after each invoice except the last one
       if (i < invoiceCopies - 1) {
         allInvoices += '<div class="page-break"></div>'
       }
@@ -353,13 +611,27 @@ export default function CombinedShippingPage() {
 
       allLabels += generatePageLayout(boxesOnThisPage, startBox)
 
-      // Add page break after each label page except the last one
       if (page < totalPages - 1) {
         allLabels += '<div class="page-break"></div>'
       }
     }
 
-    // Combine content with proper page break between sections
+    // Generate authorization letters
+    let allAuthorizations = ""
+    if (authorizationType && authorizationCopies > 0) {
+      for (let i = 0; i < authorizationCopies; i++) {
+        allAuthorizations += `
+        <div class="auth-page">
+          ${authorizationType === "dhl" ? generateDHLAuthorizationHTML() : generateFedExAuthorizationHTML()}
+        </div>
+      `
+        if (i < authorizationCopies - 1) {
+          allAuthorizations += '<div class="page-break"></div>'
+        }
+      }
+    }
+
+    // Combine content with proper page breaks
     let combinedContent = ""
 
     if (invoiceCopies > 0) {
@@ -374,304 +646,476 @@ export default function CombinedShippingPage() {
       combinedContent += allLabels
     }
 
+    if ((invoiceCopies > 0 || totalBoxes > 0) && authorizationType && authorizationCopies > 0) {
+      combinedContent += '<div class="page-break"></div>'
+    }
+
+    if (authorizationType && authorizationCopies > 0) {
+      combinedContent += allAuthorizations
+    }
+
     document.body.innerHTML = `
     <style>
-      @page {
-        size: A4;
-        margin: 10mm;
-      }
-      
-      * {
-        box-sizing: border-box;
-      }
-      
-      body {
-        margin: 0;
-        padding: 0;
-        font-family: Arial, sans-serif;
-        line-height: 1.2;
-      }
-      
-      .page-break {
-        page-break-after: always;
-        height: 0;
-        margin: 0;
-        padding: 0;
-      }
-      
-      /* Invoice Styles */
-      .invoice-page {
-        width: 100%;
-        min-height: 95vh;
-        border: 1px solid #666;
-        border-radius: 8px;
-        padding: 15px;
-        margin: 0;
-        background: white;
-        page-break-inside: avoid;
-      }
-      
-      .invoice-page .text-center {
-        text-align: center;
-      }
-      
-      .invoice-page .grid {
-        display: grid;
-      }
-      
-      .invoice-page .grid-cols-2 {
-        grid-template-columns: 1fr 1fr;
-      }
-      
-      .invoice-page .gap-4 {
-        gap: 16px;
-      }
-      
-      .invoice-page .gap-2 {
-        gap: 8px;
-      }
-      
-      .invoice-page .mb-6 {
-        margin-bottom: 24px;
-      }
-      
-      .invoice-page .mb-2 {
-        margin-bottom: 8px;
-      }
-      
-      .invoice-page .mt-2 {
-        margin-top: 8px;
-      }
-      
-      .invoice-page .p-1 {
-        padding: 4px;
-      }
-      
-      .invoice-page .px-2 {
-        padding-left: 8px;
-        padding-right: 8px;
-      }
-      
-      .invoice-page .border {
-        border: 1px solid #d1d5db;
-      }
-      
-      .invoice-page .border-gray-300 {
-        border-color: #d1d5db;
-      }
-      
-      .invoice-page .border-gray-400 {
-        border-color: #9ca3af;
-      }
-      
-      .invoice-page .rounded-lg {
-        border-radius: 8px;
-      }
-      
-      .invoice-page .font-bold {
-        font-weight: bold;
-      }
-      
-      .invoice-page .uppercase {
-        text-transform: uppercase;
-      }
-      
-      .invoice-page .text-right {
-        text-align: right;
-      }
-      
-      .invoice-page .text-center {
-        text-align: center;
-      }
-      
-      .invoice-page .text-justify {
-        text-align: justify;
-      }
-      
-      .invoice-page .italic {
-        font-style: italic;
-      }
-      
-      .invoice-page .flex {
-        display: flex;
-      }
-      
-      .invoice-page .flex-row {
-        flex-direction: row;
-      }
-      
-      .invoice-page table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 8px;
-      }
-      
-      .invoice-page th,
-      .invoice-page td {
-        border: 1px solid #d1d5db;
-        padding: 4px 8px;
-        text-align: left;
-        font-size: 12px;
-      }
-      
-      .invoice-page th {
-        background-color: #f3f4f6;
-        font-weight: bold;
-      }
-      
-      .invoice-page .bg-gray-100 {
-        background-color: #f3f4f6;
-      }
-      
-      .invoice-page .bg-gray-200 {
-        background-color: #e5e7eb;
-      }
-      
-      .invoice-page .whitespace-nowrap {
-        white-space: nowrap;
-      }
-      
-      .invoice-page .border-t {
-        border-top: 1px solid #9ca3af;
-      }
-      
-      .invoice-page .ml-auto {
-        margin-left: auto;
-      }
-      
-      .invoice-page .mr-4 {
-        margin-right: 16px;
-      }
-      
-      .invoice-page .mr-12 {
-        margin-right: 48px;
-      }
-      
-      .invoice-page .pt-1 {
-        padding-top: 4px;
-      }
-      
-      .invoice-page .h-10 {
-        height: 40px;
-      }
-      
-      .invoice-page .w-48 {
-        width: 192px;
-      }
-      
-      /* Label Styles */
-      .page {
-        width: 100%;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        margin: 0;
-        padding: 0;
-        page-break-inside: avoid;
-      }
-      
-      .label-full {
-        width: 100%;
-        height: 100%;
-        border: 2px solid #000;
-        border-radius: 15px;
-        padding: 20px;
-        position: relative;
-        background: white;
-      }
-      
-      .label-half {
-        width: 100%;
-        height: calc(50% - 5px);
-        border: 2px solid #000;
-        border-radius: 10px;
-        padding: 15px;
-        position: relative;
-        margin-bottom: 10px;
-        background: white;
-      }
-      
-      .label-half:last-child {
-        margin-bottom: 0;
-      }
-      
-      .top-half, .bottom-half {
-        width: 100%;
-        height: calc(50% - 5px);
-        display: flex;
-        flex-direction: row;
-        gap: 10px;
-      }
-      
-      .bottom-half {
-        margin-top: 10px;
-      }
-      
-      .label-quarter {
-        width: calc(50% - 5px);
-        height: 100%;
-        border: 2px solid #000;
-        border-radius: 8px;
-        padding: 12px;
-        position: relative;
-        background: white;
-      }
-      
-      .label-half-full {
-        width: 100%;
-        height: 100%;
-        border: 2px solid #000;
-        border-radius: 10px;
-        padding: 15px;
-        position: relative;
-        background: white;
-      }
-      
-      .address-section {
-        width: 70%;
-        padding-top: 10px;
-      }
-      
-      .barcode-top-right {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 25%;
-        text-align: right;
-      }
-      
-      .contact-info {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-      
-      /* Responsive font sizes for labels */
-      .label-full h2 { font-size: 28pt; margin: 0 0 10px 0; }
-      .label-full p { font-size: 24pt; margin: 4px 0; line-height: 1.2; }
-      
-      .label-half h2 { font-size: 20pt; margin: 0 0 8px 0; }
-      .label-half p { font-size: 18pt; margin: 3px 0; line-height: 1.2; }
-      
-      .label-half-full h2 { font-size: 20pt; margin: 0 0 8px 0; }
-      .label-half-full p { font-size: 18pt; margin: 3px 0; line-height: 1.2; }
-      
-      .label-quarter h2 { font-size: 14pt; margin: 0 0 6px 0; }
-      .label-quarter p { font-size: 12pt; margin: 2px 0; line-height: 1.1; }
-      
-      .address-section p {
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-      }
-      
-      .address-section .font-bold {
-        font-weight: bold;
-      }
-      
-      .address-section .uppercase {
-        text-transform: uppercase;
-      }
-    </style>
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  
+  * {
+    box-sizing: border-box;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    line-height: 1.4;
+    font-size: 14px;
+  }
+  
+  .page-break {
+    page-break-after: always;
+    height: 0;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Invoice Styles */
+  .invoice-page {
+    width: 100%;
+    height: 100vh;
+    border: 1px solid #666;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 0;
+    background: white;
+    page-break-inside: avoid;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+
+  .invoice-page .text-center {
+    text-align: center;
+  }
+
+  .invoice-page .grid {
+    display: grid;
+  }
+
+  .invoice-page .grid-cols-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .invoice-page .gap-4 {
+    gap: 12px;
+  }
+
+  .invoice-page .gap-2 {
+    gap: 6px;
+  }
+
+  .invoice-page .mb-6 {
+    margin-bottom: 16px;
+  }
+
+  .invoice-page .mb-2 {
+    margin-bottom: 6px;
+  }
+
+  .invoice-page .mt-2 {
+    margin-top: 6px;
+  }
+
+  .invoice-page .p-1 {
+    padding: 3px;
+  }
+
+  .invoice-page .px-2 {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .invoice-page .border {
+    border: 1px solid #d1d5db;
+  }
+
+  .invoice-page .border-gray-300 {
+    border-color: #d1d5db;
+  }
+
+  .invoice-page .border-gray-400 {
+    border-color: #9ca3af;
+  }
+
+  .invoice-page .rounded-lg {
+    border-radius: 6px;
+  }
+
+  .invoice-page .font-bold {
+    font-weight: bold;
+  }
+
+  .invoice-page .uppercase {
+    text-transform: uppercase;
+  }
+
+  .invoice-page .text-right {
+    text-align: right;
+  }
+
+  .invoice-page .text-center {
+    text-align: center;
+  }
+
+  .invoice-page .text-justify {
+    text-align: justify;
+  }
+
+  .invoice-page .italic {
+    font-style: italic;
+  }
+
+  .invoice-page .flex {
+    display: flex;
+  }
+
+  .invoice-page .flex-row {
+    flex-direction: row;
+  }
+
+  /* Fixed height table container */
+  .invoice-page .table-container {
+    height: 540px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+
+  .invoice-page table {
+    width: 100%;
+    border-collapse: collapse;
+    height: 100%;
+  }
+
+  .invoice-page th,
+  .invoice-page td {
+    border: 1px solid #d1d5db;
+    padding: 3px 6px;
+    text-align: left;
+    font-size: 11px;
+    line-height: 1.2;
+    vertical-align: top;
+  }
+
+  .invoice-page th {
+    background-color: #f3f4f6;
+    font-weight: bold;
+  }
+
+  .invoice-page .bg-gray-100 {
+    background-color: #f3f4f6;
+  }
+  
+  .invoice-page .bg-gray-200 {
+    background-color: #e5e7eb;
+  }
+  
+  .invoice-page .whitespace-nowrap {
+    white-space: nowrap;
+  }
+  
+  .invoice-page .border-t {
+    border-top: 1px solid #9ca3af;
+  }
+  
+  .invoice-page .ml-auto {
+    margin-left: auto;
+  }
+  
+  .invoice-page .mr-4 {
+    margin-right: 12px;
+  }
+  
+  .invoice-page .mr-12 {
+    margin-right: 36px;
+  }
+  
+  .invoice-page .pt-1 {
+    padding-top: 3px;
+  }
+  
+  .invoice-page .h-10 {
+    height: 30px;
+  }
+  
+  .invoice-page .w-48 {
+    width: 144px;
+  }
+
+  /* Declaration and signature at bottom */
+  .invoice-page .declaration-section {
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid #9ca3af;
+  }
+
+  .invoice-page .signature-section {
+    margin-top: 8px;
+  }
+  
+  /* Label Styles */
+  .page {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    page-break-inside: avoid;
+  }
+  
+  .label-full {
+    width: 100%;
+    height: 100%;
+    border: 2px solid #000;
+    border-radius: 15px;
+    padding: 20px;
+    position: relative;
+    background: white;
+  }
+  
+  .label-half {
+    width: 100%;
+    height: calc(50% - 5px);
+    border: 2px solid #000;
+    border-radius: 10px;
+    padding: 15px;
+    position: relative;
+    margin-bottom: 10px;
+    background: white;
+  }
+  
+  .label-half:last-child {
+    margin-bottom: 0;
+  }
+  
+  .top-half, .bottom-half {
+    width: 100%;
+    height: calc(50% - 5px);
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+  }
+  
+  .bottom-half {
+    margin-top: 10px;
+  }
+  
+  .label-quarter {
+    width: calc(50% - 5px);
+    height: 100%;
+    border: 2px solid #000;
+    border-radius: 8px;
+    padding: 12px;
+    position: relative;
+    background: white;
+  }
+  
+  .label-half-full {
+    width: 100%;
+    height: 100%;
+    border: 2px solid #000;
+    border-radius: 10px;
+    padding: 15px;
+    position: relative;
+    background: white;
+  }
+  
+  .address-section {
+    width: 70%;
+    padding-top: 10px;
+  }
+  
+  .barcode-top-right {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 25%;
+    text-align: right;
+  }
+  
+  .contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  /* Responsive font sizes for labels */
+  .label-full h2 { font-size: 28pt; margin: 0 0 10px 0; }
+  .label-full p { font-size: 24pt; margin: 4px 0; line-height: 1.2; }
+  
+  .label-half h2 { font-size: 20pt; margin: 0 0 8px 0; }
+  .label-half p { font-size: 18pt; margin: 3px 0; line-height: 1.2; }
+  
+  .label-half-full h2 { font-size: 20pt; margin: 0 0 8px 0; }
+  .label-half-full p { font-size: 18pt; margin: 3px 0; line-height: 1.2; }
+  
+  .label-quarter h2 { font-size: 14pt; margin: 0 0 6px 0; }
+  .label-quarter p { font-size: 12pt; margin: 2px 0; line-height: 1.1; }
+  
+  .address-section p {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  .address-section .font-bold {
+    font-weight: bold;
+  }
+  
+  .address-section .uppercase {
+    text-transform: uppercase;
+  }
+  
+  /* Authorization Letter Styles - Full Page */
+  .auth-page {
+    width: 100%;
+    min-height: 100vh;
+    padding: 20px;
+    margin: 0;
+    background: white;
+    page-break-inside: avoid;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .auth-page .text-center {
+    text-align: center;
+  }
+  
+  .auth-page .text-justify {
+    text-align: justify;
+  }
+  
+  .auth-page .text-right {
+    text-align: right;
+  }
+  
+  .auth-page .font-bold {
+    font-weight: bold;
+  }
+  
+  .auth-page .text-lg {
+    font-size: 18px;
+  }
+  
+  .auth-page .mb-2 {
+    margin-bottom: 8px;
+  }
+  
+  .auth-page .mb-4 {
+    margin-bottom: 16px;
+  }
+  
+  .auth-page .mb-6 {
+    margin-bottom: 24px;
+  }
+  
+  .auth-page .mb-8 {
+    margin-bottom: 32px;
+  }
+  
+  .auth-page .mt-2 {
+    margin-top: 8px;
+  }
+  
+  .auth-page .mt-8 {
+    margin-top: 32px;
+  }
+  
+  .auth-page .grid {
+    display: grid;
+  }
+  
+  .auth-page .grid-cols-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .auth-page .gap-8 {
+    gap: 32px;
+  }
+  
+  .auth-page .border {
+    border: 1px solid #666;
+  }
+  
+  .auth-page .border-b {
+    border-bottom: 1px solid #666;
+  }
+  
+  .auth-page .border-gray-400 {
+    border-color: #9ca3af;
+  }
+  
+  .auth-page .h-6 {
+    height: 24px;
+  }
+  
+  .auth-page .h-12 {
+    height: 48px;
+  }
+  
+  .auth-page .h-16 {
+    height: 64px;
+  }
+  
+  .auth-page .flex {
+    display: flex;
+  }
+  
+  .auth-page .items-center {
+    align-items: center;
+  }
+  
+  .auth-page .justify-center {
+    justify-content: center;
+  }
+  
+  .auth-page .text-gray-500 {
+    color: #6b7280;
+  }
+  
+  .auth-page table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .auth-page th,
+  .auth-page td {
+    border: 1px solid #9ca3af;
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  
+  .auth-page th {
+    background-color: #f3f4f6;
+    font-weight: bold;
+  }
+  
+  .auth-page .bg-gray-100 {
+    background-color: #f3f4f6;
+  }
+  
+  .auth-page .px-3 {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  
+  .auth-page .py-2 {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+</style>
     ${combinedContent}
   `
 
@@ -763,11 +1207,11 @@ export default function CombinedShippingPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-center text-[#232C65] mb-2">Shipping Documents</h1>
         <p className="text-center text-gray-600">
-          Generate and print shipping invoices and labels for tracking number: {trackingNumber}
+          Generate and print shipping invoices, labels, and authorization letters for tracking number: {trackingNumber}
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
+      <div className="grid md:grid-cols-3 gap-6 mb-8">
         {/* Invoice Section */}
         <Card>
           <CardHeader>
@@ -834,6 +1278,66 @@ export default function CombinedShippingPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Authorization Letters Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileCheck className="h-5 w-5" />
+              Authorization Letter
+            </CardTitle>
+            <CardDescription>Select courier authorization letter type</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="authorizationType" className="text-sm font-medium mb-2 block">
+                  Letter Type:
+                </label>
+                <Select value={authorizationType} onValueChange={setAuthorizationType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select authorization type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dhl">DHL Authorization Letter</SelectItem>
+                    <SelectItem value="fedex">FedEx Authorization Letter</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {authorizationType && (
+                <div className="flex items-center gap-2">
+                  <label htmlFor="authorizationCopies" className="text-sm font-medium">
+                    Number of Copies:
+                  </label>
+                  <input
+                    id="authorizationCopies"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={authorizationCopies}
+                    onChange={(e) =>
+                      setAuthorizationCopies(Math.max(1, Math.min(10, Number.parseInt(e.target.value) || 1)))
+                    }
+                    className="w-16 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="text-sm text-gray-600 mt-4">
+              <p>
+                •{" "}
+                {authorizationType === "dhl"
+                  ? "DHL Express India authorization"
+                  : authorizationType === "fedex"
+                    ? "FedEx Express authorization"
+                    : "Select a courier service"}
+              </p>
+              <p>• Required for customs clearance</p>
+              <p>• Each copy on separate page</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Separator className="my-6" />
@@ -842,7 +1346,7 @@ export default function CombinedShippingPage() {
       <div className="text-center">
         <div className="bg-blue-50 p-6 rounded-lg mb-6">
           <h2 className="text-xl font-semibold mb-3 text-[#232C65]">Print Summary</h2>
-          <div className="grid md:grid-cols-2 gap-4 text-sm">
+          <div className="grid md:grid-cols-3 gap-4 text-sm">
             <div>
               <p className="font-medium">Invoices: {invoiceCopies} copies</p>
               <p className="text-gray-600">Each invoice on separate page</p>
@@ -853,8 +1357,16 @@ export default function CombinedShippingPage() {
                 {Math.ceil(totalBoxes / 4)} page{Math.ceil(totalBoxes / 4) > 1 ? "s" : ""} total
               </p>
             </div>
+            <div>
+              <p className="font-medium">
+                Authorization: {authorizationType ? `${authorizationCopies} copies` : "None selected"}
+              </p>
+              <p className="text-gray-600">
+                {authorizationType ? `${authorizationType.toUpperCase()} letter` : "No authorization letter"}
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-gray-500 mt-3">Print order: All invoice copies first, then all labels</p>
+          <p className="text-xs text-gray-500 mt-3">Print order: Invoices → Labels → Authorization Letters</p>
         </div>
 
         <Button

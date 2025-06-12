@@ -148,6 +148,13 @@ export const adminColumns = [
             <Eye className="w-5 h-5" />
           </Button>
           <Button
+            className="bg-blue-400"
+            onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}
+          >
+            <Plane className="w-5 h-5" />
+            <Barcode className="w-5 h-5" />
+          </Button>
+          <Button
             className="bg-blue-800"
             onClick={() => router.push(`/edit-awb/${trackingNumber}`)}
           >
