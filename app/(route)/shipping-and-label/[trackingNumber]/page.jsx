@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import axios from "axios"
-import { Loader2, Printer, FileText, Package, FileCheck } from "lucide-react"
+import { Loader2, Printer, FileText, Package, FileCheck, Upload, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
@@ -23,6 +23,8 @@ export default function CombinedShippingPage() {
   const [totalBoxes, setTotalBoxes] = useState(1)
   const [authorizationType, setAuthorizationType] = useState("")
   const [authorizationCopies, setAuthorizationCopies] = useState(1)
+  const [kycDocumentUrl, setKycDocumentUrl] = useState(null)
+  const [kycLoading, setKycLoading] = useState(false)
 
   useEffect(() => {
     const fetchAWBData = async () => {
@@ -33,15 +35,23 @@ export default function CombinedShippingPage() {
         setAwbData(response.data[0])
         setTotalBoxes(response.data[0]?.boxes.length || 1)
         const kycTypeMap = {
-  "Aadhaar No - ": "Aadhaar Card",
-  "Pan No - ": "Pan Card",
-  "Passport No - ": "Passport",
-  "Driving License No - ": "Driving License",
-  "Voter ID Card No - ": "Voter ID Card",
-  "GST No - ": "GST Certificate",
-};
+          "Aadhaar No - ": "Aadhaar Card",
+          "Pan No - ": "Pan Card",
+          "Passport No - ": "Passport",
+          "Driving License No - ": "Driving License",
+          "Voter ID Card No - ": "Voter ID Card",
+          "GST No - ": "GST Certificate",
+        }
 
-  setFormattedKycType(kycTypeMap[response.data[0]?.sender?.kyc?.type] || response.data[0]?.sender?.kyc?.type || "");
+        setFormattedKycType(
+          kycTypeMap[response.data[0]?.sender?.kyc?.type] || response.data[0]?.sender?.kyc?.type || "",
+        )
+
+        // Process KYC document URL if available
+        if (response.data[0]?.sender?.kyc?.document) {
+          processKycDocumentUrl(response.data[0].sender.kyc.document)
+        }
+
         setLoading(false)
       } catch (err) {
         setError("Failed to fetch AWB data")
@@ -53,6 +63,24 @@ export default function CombinedShippingPage() {
       fetchAWBData()
     }
   }, [trackingNumber])
+
+  const processKycDocumentUrl = (documentUrl) => {
+    setKycLoading(true)
+    try {
+      console.log("Original KYC document URL:", documentUrl)
+      setKycDocumentUrl(documentUrl)
+    } catch (error) {
+      console.error("Error processing KYC document URL:", error)
+    } finally {
+      setKycLoading(false)
+    }
+  }
+
+  const openKycDocument = () => {
+    if (kycDocumentUrl) {
+      window.open(kycDocumentUrl, "_blank")
+    }
+  }
 
   // Function to convert number to words
   const numberToWords = (num) => {
@@ -1207,11 +1235,12 @@ export default function CombinedShippingPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-center text-[#232C65] mb-2">Shipping Documents</h1>
         <p className="text-center text-gray-600">
-          Generate and print shipping invoices, labels, and authorization letters for tracking number: {trackingNumber}
+          Generate and print shipping invoices, labels, authorization letters, and KYC documents for tracking number:{" "}
+          {trackingNumber}
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Invoice Section */}
         <Card>
           <CardHeader>
@@ -1338,6 +1367,55 @@ export default function CombinedShippingPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* KYC Document Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              KYC Document
+            </CardTitle>
+            <CardDescription>View and print KYC verification document</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="text-sm">
+                <p className="font-medium">{formattedKycType || "KYC Document"}</p>
+                <p className="text-gray-600">{awbData?.sender?.kyc?.kyc || "No KYC Number"}</p>
+              </div>
+
+              {kycLoading && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading KYC document...
+                </div>
+              )}
+            </div>
+            <div className="text-sm text-gray-600 mt-4">
+              <p>
+                • Status:{" "}
+                {kycDocumentUrl
+                  ? "✅ Document available"
+                  : awbData?.sender?.kyc?.document
+                    ? "⚠️ Loading..."
+                    : "❌ No document"}
+              </p>
+              <p>• PDF format from Google Drive</p>
+              <p>• Opens in a new window for printing</p>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button
+              onClick={openKycDocument}
+              disabled={!kycDocumentUrl}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              View & Print KYC Document
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
 
       <Separator className="my-6" />
@@ -1366,17 +1444,35 @@ export default function CombinedShippingPage() {
               </p>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-3">Print order: Invoices → Labels → Authorization Letters</p>
+          <div className="mt-4 text-xs text-gray-500">
+            <p>Print order: Invoices → Labels → Authorization Letters</p>
+            <p className="mt-1 font-medium text-sm text-blue-600">
+              Note: KYC Document must be printed separately using the "View & Print KYC Document" button
+            </p>
+          </div>
         </div>
 
-        <Button
-          onClick={handleCombinedPrint}
-          size="lg"
-          className="flex items-center gap-2 bg-[#232C65] hover:bg-[#1a2150] px-8 py-3"
-        >
-          <Printer className="h-5 w-5" />
-          Print All Documents
-        </Button>
+        <div className="flex flex-col md:flex-row gap-4 justify-center">
+          <Button
+            onClick={handleCombinedPrint}
+            size="lg"
+            className="flex items-center gap-2 bg-[#232C65] hover:bg-[#1a2150] px-8 py-3"
+          >
+            <Printer className="h-5 w-5" />
+            Print Shipping Documents
+          </Button>
+
+          <Button
+            onClick={openKycDocument}
+            disabled={!kycDocumentUrl}
+            size="lg"
+            variant="outline"
+            className="flex items-center gap-2 px-8 py-3"
+          >
+            <ExternalLink className="h-5 w-5" />
+            Open KYC Document
+          </Button>
+        </div>
       </div>
 
       {/* Hidden preview areas */}

@@ -88,7 +88,7 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [forwardingLink, setForwardingLink] = useState(awb?.forwardingLink || "")
 
   const [shippingCurrency, setShippingCurrency] = useState(awb?.shippingCurrency || "₹")
-  const [totalShippingValue, setTotalShippingValue] = useState(awb?.totalShippingValue || 0);
+  const [totalShippingValue, setTotalShippingValue] = useState(awb?.totalShippingValue || 0)
 
   // Sender details
   const [senderName, setSenderName] = useState(awb?.sender?.name || "")
@@ -100,7 +100,7 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [senderContact, setSenderContact] = useState(awb?.sender?.contact || "")
   const [kycType, setKycType] = useState(awb?.sender?.kyc?.type || "Aadhaar No -")
   const [kyc, setKyc] = useState(awb?.sender?.kyc?.kyc || "")
-  const [kycLink, setKycLink] = useState(awb?.sender?.kyc?.link || "")
+  const [kycDocument, setKycDocument] = useState(awb?.sender?.kyc?.document || "")
   const [gst, setGst] = useState(awb?.gst || "")
 
   // Receiver details
@@ -213,6 +213,7 @@ export default function AWBForm({ isEdit = false, awb }) {
         setSenderContact(customer.contact ? customer.contact.replace(/^\+\d+\s+/, "") : "")
         setKycType(customer.kyc?.type || "Aadhaar No -")
         setKyc(customer.kyc?.kyc || "")
+        setKycDocument(customer.kyc?.document || "")
         setGst(customer.gst || "")
       }
     }
@@ -309,17 +310,20 @@ export default function AWBForm({ isEdit = false, awb }) {
       return acc + chargeableWeight
     }, 0)
 
-    setTotalChargeableWeight((totalWeight).toFixed(2).toString())
+    setTotalChargeableWeight(totalWeight.toFixed(2).toString())
 
     const totalShippingValue = boxes.reduce((acc, box) => {
-      return acc + box.items.reduce((itemAcc, item) => {
-        const itemValue = Number.parseFloat(item.price) || 0
-        const itemQuantity = Number.parseInt(item.quantity, 10) || 0
-        return itemAcc + itemValue * itemQuantity
-      }, 0)
-    }, 0);
+      return (
+        acc +
+        box.items.reduce((itemAcc, item) => {
+          const itemValue = Number.parseFloat(item.price) || 0
+          const itemQuantity = Number.parseInt(item.quantity, 10) || 0
+          return itemAcc + itemValue * itemQuantity
+        }, 0)
+      )
+    }, 0)
 
-    setTotalShippingValue(parseFloat(totalShippingValue))
+    setTotalShippingValue(Number.parseFloat(totalShippingValue))
   }, [boxes])
 
   // Reset selected rate when weight changes
@@ -460,16 +464,16 @@ export default function AWBForm({ isEdit = false, awb }) {
           const actualWeight = Number(box.actualWeight) || 0
 
           const dimensionalWeight = ((length * breadth * height) / 5000).toFixed(3)
-          const chargeableWeightRaw = Math.max(actualWeight, dimensionalWeight);
+          const chargeableWeightRaw = Math.max(actualWeight, dimensionalWeight)
 
-          let chargeableWeight;
+          let chargeableWeight
 
           if (chargeableWeightRaw < 20) {
             // Round to nearest 0.5 kg
-            chargeableWeight = Math.ceil(chargeableWeightRaw * 2) / 2;
+            chargeableWeight = Math.ceil(chargeableWeightRaw * 2) / 2
           } else {
             // Round to nearest 1 kg
-            chargeableWeight = Math.ceil(chargeableWeightRaw);
+            chargeableWeight = Math.ceil(chargeableWeightRaw)
           }
 
           updatedBoxes[index].dimensionalWeight = dimensionalWeight
@@ -677,6 +681,7 @@ export default function AWBForm({ isEdit = false, awb }) {
           kyc: {
             type: kycType,
             kyc,
+            document: kycDocument,
           },
           owner: localStorage.getItem("id"),
           gst,
@@ -773,40 +778,55 @@ export default function AWBForm({ isEdit = false, awb }) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-center text-[#232C65]">{isEdit ? "Edit AWB" : "Create AWB"}</h1>
+    <div className="container mx-auto px-2 py-2 text-xs">
+      <h1 className="text-lg font-bold mb-3 text-center text-[#232C65]">{isEdit ? "Edit AWB" : "Create AWB"}</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-3">
         {/* Basic Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl text-[#232C65]">Basic Details</CardTitle>
+        <Card className="border-gray-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-[#232C65]">Basic Details</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="invoiceNumber">Sr No:</Label>
-              <Input id="invoiceNumber" type="text" placeholder="Invoice No." value={invoiceNumber} readOnly />
+          <CardContent className="grid grid-cols-6 gap-2 pt-0">
+            <div className="space-y-1">
+              <Label htmlFor="invoiceNumber" className="text-xs">
+                Sr No:
+              </Label>
+              <Input
+                id="invoiceNumber"
+                type="text"
+                placeholder="Invoice No."
+                value={invoiceNumber}
+                readOnly
+                className="h-7 text-xs"
+              />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="trackingNumber">Tracking No:</Label>
+            <div className="space-y-1">
+              <Label htmlFor="trackingNumber" className="text-xs">
+                Tracking No:
+              </Label>
               <Input
                 id="trackingNumber"
                 type="number"
                 placeholder="Tracking No."
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
+                className="h-7 text-xs"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Date</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant={"outline"}
-                    className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+                    className={cn(
+                      "w-full justify-start text-left font-normal h-7 text-xs",
+                      !date && "text-muted-foreground",
+                    )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(new Date(date), "PPP") : <span>Select Parcel Date</span>}
+                    <CalendarIcon className="mr-1 h-3 w-3" />
+                    {date ? format(new Date(date), "dd/MM/yy") : <span>Date</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -819,11 +839,11 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="space-y-2">
-              <Label>Parcel Type</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">Parcel Type</Label>
               <Select value={parcelType} onValueChange={setParcelType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Parcel Type" />
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="International">International</SelectItem>
@@ -831,11 +851,11 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Via</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">Via</Label>
               <Select value={via} onValueChange={setVia}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Via" />
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="Via" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Air Shipment">Air Shipment</SelectItem>
@@ -845,11 +865,11 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Shipment Type</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">Shipment Type</Label>
               <Select value={shipmentType} onValueChange={setShipmentType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Shipment Type" />
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Document">Document</SelectItem>
@@ -859,24 +879,30 @@ export default function AWBForm({ isEdit = false, awb }) {
             </div>
             {isEdit && (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="forwardingNo">Forwarding No:</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="forwardingNo" className="text-xs">
+                    Forwarding No:
+                  </Label>
                   <Input
                     id="forwardingNo"
                     type="text"
                     placeholder="Forwarding No."
                     value={forwardingNo}
                     onChange={(e) => setForwardingNo(e.target.value)}
+                    className="h-7 text-xs"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="forwardingLink">Forwarding Link:</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="forwardingLink" className="text-xs">
+                    Forwarding Link:
+                  </Label>
                   <Input
                     id="forwardingLink"
                     type="text"
                     placeholder="Forwarding Link."
                     value={forwardingLink}
                     onChange={(e) => setForwardingLink(e.target.value)}
+                    className="h-7 text-xs"
                   />
                 </div>
               </>
@@ -885,73 +911,91 @@ export default function AWBForm({ isEdit = false, awb }) {
         </Card>
 
         {/* Sender Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl text-[#232C65]">Sender Details</CardTitle>
+        <Card className="border-gray-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-[#232C65]">Sender Details</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="senderName">Sender Name*</Label>
-              <div className="flex gap-2">
+          <CardContent className="grid grid-cols-6 gap-2 pt-0">
+            <div className="space-y-1">
+              <Label htmlFor="senderName" className="text-xs">
+                Sender Name*
+              </Label>
+              <div className="flex gap-1">
                 <Input
                   id="senderName"
                   placeholder="Sender Name"
                   value={senderName}
                   onChange={(e) => setSenderName(e.target.value)}
                   required
-                  className="flex-1"
+                  className="flex-1 h-7 text-xs"
                 />
-                <Button type="button" variant="outline" size="icon" onClick={() => openSearch("sender")}>
-                  <Search className="h-4 w-4" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openSearch("sender")}
+                  className="h-7 w-7 p-0"
+                >
+                  <Search className="h-3 w-3" />
                 </Button>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="senderCompanyName">Company Name</Label>
+            <div className="space-y-1">
+              <Label htmlFor="senderCompanyName" className="text-xs">
+                Company Name
+              </Label>
               <Input
                 id="senderCompanyName"
                 placeholder="Company Name"
                 value={senderCompanyName}
                 onChange={(e) => setSenderCompanyName(e.target.value)}
+                className="h-7 text-xs"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="senderEmail">Email</Label>
+            <div className="space-y-1">
+              <Label htmlFor="senderEmail" className="text-xs">
+                Email
+              </Label>
               <Input
                 id="senderEmail"
                 type="email"
                 placeholder="Email Address"
                 value={senderEmail}
                 onChange={(e) => setSenderEmail(e.target.value)}
+                className="h-7 text-xs"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="senderZipCode">Sender Zip Code*</Label>
+            <div className="space-y-1">
+              <Label htmlFor="senderZipCode" className="text-xs">
+                Zip Code*
+              </Label>
               <div className="relative">
                 <Input
                   id="senderZipCode"
                   type="text"
-                  placeholder="Sender Zip Code"
+                  placeholder="Zip Code"
                   value={senderZipCode}
                   onChange={(e) => setSenderZipCode(e.target.value)}
                   required
-                  className="pr-10"
+                  className="pr-8 h-7 text-xs"
                 />
                 {senderZipCode && senderZipCode.length >= 5 && (
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <span className="text-xs text-green-600">Lookup</span>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                    <span className="text-xs text-green-600">✓</span>
                   </div>
                 )}
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="senderCountry">Sender Country*</Label>
+            <div className="space-y-1">
+              <Label htmlFor="senderCountry" className="text-xs">
+                Country*
+              </Label>
               <Select value={senderCountry} onValueChange={setSenderCountry}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Country" />
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="Country" />
                 </SelectTrigger>
                 <SelectContent>
                   {Countries.map((country, index) => (
@@ -962,23 +1006,28 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="senderAddress">Sender Address*</Label>
+            <div className="space-y-1 col-span-2">
+              <Label htmlFor="senderAddress" className="text-xs">
+                Address*
+              </Label>
               <Textarea
                 id="senderAddress"
                 placeholder="Sender Address"
                 value={senderAddress}
                 onChange={(e) => setSenderAddress(e.target.value)}
-                rows={4}
+                rows={2}
                 required
+                className="text-xs resize-none"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="senderContact">Sender Contact*</Label>
+            <div className="space-y-1">
+              <Label htmlFor="senderContact" className="text-xs">
+                Contact*
+              </Label>
               <div className="flex">
                 {senderCountry && (
-                  <div className="flex items-center px-3 border border-r-0 rounded-l-md bg-gray-50 text-sm text-gray-600">
+                  <div className="flex items-center px-2 border border-r-0 rounded-l-md bg-gray-50 text-xs text-gray-600">
                     {getCallingCode(senderCountry)}
                   </div>
                 )}
@@ -989,15 +1038,15 @@ export default function AWBForm({ isEdit = false, awb }) {
                   value={senderContact}
                   onChange={(e) => setSenderContact(e.target.value)}
                   required
-                  className={senderCountry ? "rounded-l-none" : ""}
+                  className={cn("h-7 text-xs", senderCountry ? "rounded-l-none" : "")}
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Sender KYC Type*</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">KYC Type*</Label>
               <Select value={kycType} onValueChange={setKycType} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select KYC Type" />
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="KYC Type" />
                 </SelectTrigger>
                 <SelectContent>
                   {[
@@ -1015,8 +1064,10 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="kyc">KYC*</Label>
+            <div className="space-y-1">
+              <Label htmlFor="kyc" className="text-xs">
+                KYC*
+              </Label>
               <Input
                 id="kyc"
                 type="text"
@@ -1024,69 +1075,104 @@ export default function AWBForm({ isEdit = false, awb }) {
                 value={kyc}
                 onChange={(e) => setKyc(e.target.value)}
                 required
+                className="h-7 text-xs"
               />
             </div>
-            {/* <PhotoUploader
-              clientName={senderName}
-              setProfilePic={setKycLink}
-              initialImageLink={kycLink}
-            /> */}
-            <div className="space-y-2">
-              <Label htmlFor="gst">GST</Label>
-              <Input id="gst" type="text" placeholder="GST No" value={gst} onChange={(e) => setGst(e.target.value)} />
+            <div className="space-y-1">
+              <Label htmlFor="kycDocument" className="text-xs">
+                KYC Document*
+              </Label>
+              <Input
+                id="kycDocument"
+                type="text"
+                placeholder="KYC Document"
+                value={kycDocument}
+                onChange={(e) => setKycDocument(e.target.value)}
+                required
+                className="h-7 text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="gst" className="text-xs">
+                GST
+              </Label>
+              <Input
+                id="gst"
+                type="text"
+                placeholder="GST No"
+                value={gst}
+                onChange={(e) => setGst(e.target.value)}
+                className="h-7 text-xs"
+              />
             </div>
           </CardContent>
         </Card>
 
         {/* Receiver Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl text-[#232C65]">Receiver Details</CardTitle>
+        <Card className="border-gray-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-[#232C65]">Receiver Details</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="receiverName">Receiver Name*</Label>
-              <div className="flex gap-2">
+          <CardContent className="grid grid-cols-6 gap-2 pt-0">
+            <div className="space-y-1">
+              <Label htmlFor="receiverName" className="text-xs">
+                Receiver Name*
+              </Label>
+              <div className="flex gap-1">
                 <Input
                   id="receiverName"
                   placeholder="Receiver Name"
                   value={receiverName}
                   onChange={(e) => setReceiverName(e.target.value)}
                   required
-                  className="flex-1"
+                  className="flex-1 h-7 text-xs"
                 />
-                <Button type="button" variant="outline" size="icon" onClick={() => openSearch("receiver")}>
-                  <Search className="h-4 w-4" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openSearch("receiver")}
+                  className="h-7 w-7 p-0"
+                >
+                  <Search className="h-3 w-3" />
                 </Button>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="receiverCompanyName">Company Name</Label>
+            <div className="space-y-1">
+              <Label htmlFor="receiverCompanyName" className="text-xs">
+                Company Name
+              </Label>
               <Input
                 id="receiverCompanyName"
                 placeholder="Company Name"
                 value={receiverCompanyName}
                 onChange={(e) => setReceiverCompanyName(e.target.value)}
+                className="h-7 text-xs"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="receiverEmail">Email</Label>
+            <div className="space-y-1">
+              <Label htmlFor="receiverEmail" className="text-xs">
+                Email
+              </Label>
               <Input
                 id="receiverEmail"
                 type="email"
                 placeholder="Email Address"
                 value={receiverEmail}
                 onChange={(e) => setReceiverEmail(e.target.value)}
+                className="h-7 text-xs"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="receiverCountry">Receiver Country*</Label>
+            <div className="space-y-1">
+              <Label htmlFor="receiverCountry" className="text-xs">
+                Country*
+              </Label>
               <Select value={receiverCountry} onValueChange={setReceiverCountry}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Country" />
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="Country" />
                 </SelectTrigger>
                 <SelectContent>
                   {Countries.map((country, index) => (
@@ -1097,41 +1183,48 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="receiverZipCode">Receiver Zip Code*</Label>
+            <div className="space-y-1">
+              <Label htmlFor="receiverZipCode" className="text-xs">
+                Zip Code*
+              </Label>
               <div className="relative">
                 <Input
                   id="receiverZipCode"
                   type="text"
-                  placeholder="Receiver Zip Code"
+                  placeholder="Zip Code"
                   value={receiverZipCode}
                   onChange={(e) => setReceiverZipCode(e.target.value)}
                   required
-                  className="pr-10"
+                  className="pr-8 h-7 text-xs"
                 />
                 {receiverZipCode && receiverZipCode.length >= 5 && (
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <span className="text-xs text-green-600">Lookup</span>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                    <span className="text-xs text-green-600">✓</span>
                   </div>
                 )}
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="receiverAddress">Receiver Address*</Label>
+            <div className="space-y-1 col-span-2">
+              <Label htmlFor="receiverAddress" className="text-xs">
+                Address*
+              </Label>
               <Textarea
                 id="receiverAddress"
                 placeholder="Receiver Address"
                 value={receiverAddress}
                 onChange={(e) => setReceiverAddress(e.target.value)}
-                rows={4}
+                rows={2}
                 required
+                className="text-xs resize-none"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="receiverContact">Receiver Contact*</Label>
+            <div className="space-y-1">
+              <Label htmlFor="receiverContact" className="text-xs">
+                Contact*
+              </Label>
               <div className="flex">
                 {receiverCountry && (
-                  <div className="flex items-center px-3 border border-r-0 rounded-l-md bg-gray-50 text-sm text-gray-600">
+                  <div className="flex items-center px-2 border border-r-0 rounded-l-md bg-gray-50 text-xs text-gray-600">
                     {getCallingCode(receiverCountry)}
                   </div>
                 )}
@@ -1142,7 +1235,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                   value={receiverContact}
                   onChange={(e) => setReceiverContact(e.target.value)}
                   required
-                  className={receiverCountry ? "rounded-l-none" : ""}
+                  className={cn("h-7 text-xs", receiverCountry ? "rounded-l-none" : "")}
                 />
               </div>
             </div>
@@ -1150,115 +1243,142 @@ export default function AWBForm({ isEdit = false, awb }) {
         </Card>
 
         {/* Box Details */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-2xl text-[#232C65]">Box Details</CardTitle>
+        <Card className="border-gray-200">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm text-[#232C65]">Box Details</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-3 pt-0">
             {/* Box Count Input */}
-            <div className="flex items-end gap-4">
-              <div className="space-y-2 flex-1">
-                <Label htmlFor="boxCount">How many boxes do you want?</Label>
+            <div className="flex items-end gap-2">
+              <div className="space-y-1 flex-1">
+                <Label htmlFor="boxCount" className="text-xs">
+                  How many boxes?
+                </Label>
                 <Input
                   id="boxCount"
                   type="number"
-                  placeholder="Enter number of boxes"
+                  placeholder="Number of boxes"
                   value={boxCount}
                   onChange={(e) => setBoxCount(e.target.value)}
+                  className="h-7 text-xs"
                 />
               </div>
-              <Button type="button" onClick={generateBoxes} className="mb-0.5">
-                Generate Boxes
+              <Button type="button" onClick={generateBoxes} className="h-7 text-xs px-3">
+                Generate
               </Button>
             </div>
 
             {/* Box List */}
             {boxes.length > 0 ? (
-              <div className="space-y-6">
+              <div className="space-y-3">
                 {boxes.map((box, boxIndex) => (
                   <Card key={boxIndex} className="border border-gray-200">
-                    <CardHeader className="flex flex-row items-center justify-between py-3">
-                      <CardTitle className="text-xl text-[#232C65]">Box {boxIndex + 1}</CardTitle>
+                    <CardHeader className="flex flex-row items-center justify-between py-2">
+                      <CardTitle className="text-sm text-[#232C65]">Box {boxIndex + 1}</CardTitle>
                       {boxIndex > 0 && (
-                        <Button type="button" variant="destructive" size="sm" onClick={() => removeBox(boxIndex)}>
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Remove Box
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeBox(boxIndex)}
+                          className="h-6 text-xs px-2"
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Remove
                         </Button>
                       )}
                     </CardHeader>
-                    <CardContent className="space-y-6">
+                    <CardContent className="space-y-3 pt-0">
                       {/* Basic Box Details */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor={`length-${boxIndex}`}>Length (cm)*</Label>
+                      <div className="grid grid-cols-6 gap-2">
+                        <div className="space-y-1">
+                          <Label htmlFor={`length-${boxIndex}`} className="text-xs">
+                            Length (cm)*
+                          </Label>
                           <Input
                             id={`length-${boxIndex}`}
                             type="number"
-                            placeholder="Length (cm)"
+                            placeholder="Length"
                             value={box.length || ""}
                             onChange={(e) =>
                               handleBoxChange(boxIndex, "length", Number.parseFloat(e.target.value) || "")
                             }
                             required
+                            className="h-7 text-xs"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`breadth-${boxIndex}`}>Breadth (cm)*</Label>
+                        <div className="space-y-1">
+                          <Label htmlFor={`breadth-${boxIndex}`} className="text-xs">
+                            Breadth (cm)*
+                          </Label>
                           <Input
                             id={`breadth-${boxIndex}`}
                             type="number"
-                            placeholder="Breadth (cm)"
+                            placeholder="Breadth"
                             value={box.breadth || ""}
                             onChange={(e) =>
                               handleBoxChange(boxIndex, "breadth", Number.parseFloat(e.target.value) || "")
                             }
                             required
+                            className="h-7 text-xs"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`height-${boxIndex}`}>Height (cm)*</Label>
+                        <div className="space-y-1">
+                          <Label htmlFor={`height-${boxIndex}`} className="text-xs">
+                            Height (cm)*
+                          </Label>
                           <Input
                             id={`height-${boxIndex}`}
                             type="number"
-                            placeholder="Height (cm)"
+                            placeholder="Height"
                             value={box.height || ""}
                             onChange={(e) =>
                               handleBoxChange(boxIndex, "height", Number.parseFloat(e.target.value) || "")
                             }
                             required
+                            className="h-7 text-xs"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`actualWeight-${boxIndex}`}>Actual Weight (kg)*</Label>
+                        <div className="space-y-1">
+                          <Label htmlFor={`actualWeight-${boxIndex}`} className="text-xs">
+                            Actual Weight (kg)*
+                          </Label>
                           <Input
                             id={`actualWeight-${boxIndex}`}
                             type="number"
-                            placeholder="Actual Weight (kg)"
+                            placeholder="Weight"
                             value={box.actualWeight || ""}
                             onChange={(e) =>
                               handleBoxChange(boxIndex, "actualWeight", Number.parseFloat(e.target.value) || "")
                             }
                             required
+                            className="h-7 text-xs"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`dimensionalWeight-${boxIndex}`}>Dimensional Weight (kg)</Label>
+                        <div className="space-y-1">
+                          <Label htmlFor={`dimensionalWeight-${boxIndex}`} className="text-xs">
+                            Dim Weight (kg)
+                          </Label>
                           <Input
                             id={`dimensionalWeight-${boxIndex}`}
                             type="number"
-                            placeholder="Dimensional Weight (kg)"
+                            placeholder="Dim Weight"
                             value={box.dimensionalWeight || ""}
                             readOnly
+                            className="h-7 text-xs bg-gray-50"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`chargeableWeight-${boxIndex}`}>Chargeable Weight (kg)</Label>
+                        <div className="space-y-1">
+                          <Label htmlFor={`chargeableWeight-${boxIndex}`} className="text-xs">
+                            Chargeable (kg)
+                          </Label>
                           <Input
                             id={`chargeableWeight-${boxIndex}`}
                             type="number"
-                            placeholder="Chargeable Weight (kg)"
+                            placeholder="Chargeable"
                             value={box.chargeableWeight || ""}
                             readOnly
+                            className="h-7 text-xs bg-gray-50"
                           />
                         </div>
                       </div>
@@ -1267,64 +1387,69 @@ export default function AWBForm({ isEdit = false, awb }) {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                Enter the number of boxes and click "Generate Boxes" to start
+              <div className="text-center py-4 text-muted-foreground text-xs">
+                Enter number of boxes and click "Generate" to start
               </div>
             )}
 
             {/* Shipping Invoice Option */}
             {boxes.length > 0 && (
-              <div className="pt-4 border-t">
-                <div className="flex items-center space-x-2 mb-4">
+              <div className="pt-2 border-t">
+                <div className="flex items-center space-x-2 mb-2">
                   <Checkbox id="createShippingInvoice" checked={showItemDetails} onCheckedChange={setShowItemDetails} />
-                  <Label htmlFor="createShippingInvoice" className="font-medium">
-                    Do you want to create Shipping Invoice?
+                  <Label htmlFor="createShippingInvoice" className="font-medium text-xs">
+                    Create Shipping Invoice?
                   </Label>
                 </div>
 
                 {showItemDetails && (
-                  <div className="space-y-6 mt-4">
+                  <div className="space-y-3 mt-2">
+                    <div className="grid grid-cols-6 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Currency</Label>
+                        <Select value={shippingCurrency} onValueChange={setShippingCurrency}>
+                          <SelectTrigger className="h-7 text-xs">
+                            <SelectValue placeholder="Currency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="₹">₹</SelectItem>
+                            <SelectItem value="$">$</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                     {boxes.map((box, boxIndex) => (
-                      <Card key={`items-${boxIndex}`} className="border border-gray-200">
-                        <CardHeader className="py-3">
-                                      <div className="space-y-2">
-                                        <Label>Shipping Currency</Label>
-                                        <Select value={shippingCurrency} onValueChange={setShippingCurrency}>
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select Shipping Currency" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="₹">₹</SelectItem>
-                                            <SelectItem value="$">$</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                          <CardTitle className="text-xl text-[#232C65]">Box {boxIndex + 1} Items</CardTitle>
+                      <Card key={`items-${boxIndex}`} className="border border-gray-100">
+                        <CardHeader className="py-2">
+                          <CardTitle className="text-sm text-[#232C65]">Box {boxIndex + 1} Items</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-2 pt-0">
                           {/* Items */}
-                          <div className="space-y-4">
+                          <div className="space-y-2">
                             {box.items.map((item, itemIndex) => (
                               <Card key={itemIndex} className="border border-gray-100">
-                                <CardHeader className="flex flex-row items-center justify-between py-2">
-                                  <CardTitle className="text-lg text-[#232C65]">Item {itemIndex + 1}</CardTitle>
+                                <CardHeader className="flex flex-row items-center justify-between py-1">
+                                  <CardTitle className="text-xs text-[#232C65]">Item {itemIndex + 1}</CardTitle>
                                   {itemIndex > 0 && (
                                     <Button
                                       type="button"
                                       variant="destructive"
                                       size="sm"
                                       onClick={() => removeItem(boxIndex, itemIndex)}
+                                      className="h-5 text-xs px-2"
                                     >
-                                      <Minus className="h-4 w-4 mr-2" />
-                                      Remove Item
+                                      <Minus className="h-3 w-3 mr-1" />
+                                      Remove
                                     </Button>
                                   )}
                                 </CardHeader>
-                                <CardContent>
-                                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                <CardContent className="pt-0">
+                                  <div className="grid grid-cols-12 gap-2">
                                     {/* Item Name - Take more space */}
-                                    <div className="space-y-2 md:col-span-6">
-                                      <Label htmlFor={`itemName-${boxIndex}-${itemIndex}`}>Name*</Label>
+                                    <div className="space-y-1 col-span-6">
+                                      <Label htmlFor={`itemName-${boxIndex}-${itemIndex}`} className="text-xs">
+                                        Name*
+                                      </Label>
                                       <ItemNameAutocomplete
                                         id={`itemName-${boxIndex}-${itemIndex}`}
                                         value={item.name || ""}
@@ -1333,27 +1458,33 @@ export default function AWBForm({ isEdit = false, awb }) {
                                           handleItemChange(boxIndex, itemIndex, "hsnCode", hsnItem.code)
                                         }}
                                         required={showItemDetails}
+                                        className="h-7 text-xs"
                                       />
                                     </div>
 
                                     {/* Quantity */}
-                                    <div className="space-y-2 md:col-span-2">
-                                      <Label htmlFor={`itemQuantity-${boxIndex}-${itemIndex}`}>Quantity*</Label>
+                                    <div className="space-y-1 col-span-2">
+                                      <Label htmlFor={`itemQuantity-${boxIndex}-${itemIndex}`} className="text-xs">
+                                        Qty*
+                                      </Label>
                                       <Input
                                         id={`itemQuantity-${boxIndex}-${itemIndex}`}
                                         type="number"
-                                        placeholder="Quantity"
+                                        placeholder="Qty"
                                         value={item.quantity || ""}
                                         onChange={(e) =>
                                           handleItemChange(boxIndex, itemIndex, "quantity", e.target.value)
                                         }
                                         required={showItemDetails}
+                                        className="h-7 text-xs"
                                       />
                                     </div>
 
                                     {/* Price */}
-                                    <div className="space-y-2 md:col-span-2">
-                                      <Label htmlFor={`itemPrice-${boxIndex}-${itemIndex}`}>Price*</Label>
+                                    <div className="space-y-1 col-span-2">
+                                      <Label htmlFor={`itemPrice-${boxIndex}-${itemIndex}`} className="text-xs">
+                                        Price*
+                                      </Label>
                                       <Input
                                         id={`itemPrice-${boxIndex}-${itemIndex}`}
                                         type="number"
@@ -1361,31 +1492,35 @@ export default function AWBForm({ isEdit = false, awb }) {
                                         value={item.price || ""}
                                         onChange={(e) => handleItemChange(boxIndex, itemIndex, "price", e.target.value)}
                                         required={showItemDetails}
+                                        className="h-7 text-xs"
                                       />
                                     </div>
 
                                     {/* HSN Code */}
-                                    <div className="space-y-2 md:col-span-2">
-                                      <Label htmlFor={`hsnCode-${boxIndex}-${itemIndex}`}>HSN Code</Label>
-                                      <div className="flex gap-2">
+                                    <div className="space-y-1 col-span-2">
+                                      <Label htmlFor={`hsnCode-${boxIndex}-${itemIndex}`} className="text-xs">
+                                        HSN
+                                      </Label>
+                                      <div className="flex gap-1">
                                         <Input
                                           id={`hsnCode-${boxIndex}-${itemIndex}`}
                                           type="text"
-                                          placeholder="HSN Code"
+                                          placeholder="HSN"
                                           value={item.hsnCode || ""}
                                           onChange={(e) =>
                                             handleItemChange(boxIndex, itemIndex, "hsnCode", e.target.value)
                                           }
                                           readOnly
-                                          className="flex-1"
+                                          className="flex-1 h-7 text-xs"
                                         />
                                         <Button
                                           type="button"
                                           variant="outline"
-                                          size="icon"
+                                          size="sm"
                                           onClick={() => openHsnSearch(boxIndex, itemIndex)}
+                                          className="h-7 w-7 p-0"
                                         >
-                                          <Search className="h-4 w-4" />
+                                          <Search className="h-3 w-3" />
                                         </Button>
                                       </div>
                                     </div>
@@ -1398,9 +1533,9 @@ export default function AWBForm({ isEdit = false, awb }) {
                               variant="outline"
                               size="sm"
                               onClick={() => addItem(boxIndex)}
-                              className="mt-2"
+                              className="h-6 text-xs px-2"
                             >
-                              <Plus className="h-4 w-4 mr-2" />
+                              <Plus className="h-3 w-3 mr-1" />
                               Add Item
                             </Button>
                           </div>
@@ -1414,43 +1549,41 @@ export default function AWBForm({ isEdit = false, awb }) {
 
             {/* Rate Fetching Button */}
             {canFetchRates && (
-              <div className="pt-4 border-t">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="pt-2 border-t">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-lg font-medium">Ready to fetch shipping rates?</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Get quotes from multiple carriers based on your package details
-                    </p>
+                    <h3 className="text-sm font-medium">Ready to fetch shipping rates?</h3>
+                    <p className="text-xs text-muted-foreground">Get quotes from multiple carriers</p>
                   </div>
                   <Button
                     type="button"
                     onClick={fetchRates}
-                    className="bg-[#232C65] hover:bg-[#1a2150]"
+                    className="bg-[#232C65] hover:bg-[#1a2150] h-7 text-xs px-3"
                     disabled={fetchingRates}
                   >
-                    <TruckIcon className="h-4 w-4 mr-2" />
-                    {fetchingRates ? "Fetching Rates..." : "Fetch Shipping Rates"}
+                    <TruckIcon className="h-3 w-3 mr-1" />
+                    {fetchingRates ? "Fetching..." : "Fetch Rates"}
                   </Button>
                 </div>
 
                 {selectedRate && selectedCourier && (
-                  <div className="mt-4 p-4 border rounded-lg bg-green-50">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div className="mt-2 p-2 border rounded-lg bg-green-50">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
                       <div>
-                        <h4 className="font-medium">Selected Rate: {getCourierInfo(selectedCourier).name}</h4>
+                        <h4 className="font-medium text-xs">Selected: {getCourierInfo(selectedCourier).name}</h4>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge
                             className={cn(
-                              "px-2 py-1",
+                              "px-1 py-0 text-xs",
                               getCourierInfo(selectedCourier).color,
                               getCourierInfo(selectedCourier).textColor,
                             )}
                           >
                             {getCourierInfo(selectedCourier).name}
                           </Badge>
-                          <span className="text-sm">Zone: {selectedRate.zone}</span>
-                          <span className="text-sm font-semibold">₹{selectedRate.totalWithGST}</span>
+                          <span className="text-xs">Zone: {selectedRate.zone}</span>
+                          <span className="text-xs font-semibold">₹{selectedRate.totalWithGST}</span>
                         </div>
                       </div>
                     </div>
@@ -1461,12 +1594,17 @@ export default function AWBForm({ isEdit = false, awb }) {
           </CardContent>
         </Card>
 
-        <CardFooter className="flex flex-row justify-between">
-          <div className="text-sm font-medium bg-[#0ABAB5] text-white rounded-lg p-2">Total Chargeable Weight: {totalChargeableWeight} kg</div>
-          <div className="text-sm font-medium bg-[#4DA8DA] text-white rounded-lg p-2">Total Shipping Value: {shippingCurrency} {totalShippingValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</div>
+        <CardFooter className="flex flex-row justify-between py-2">
+          <div className="text-xs font-medium bg-[#0ABAB5] text-white rounded-lg p-1">
+            Total Chargeable Weight: {totalChargeableWeight} kg
+          </div>
+          <div className="text-xs font-medium bg-[#4DA8DA] text-white rounded-lg p-1">
+            Total Shipping Value: {shippingCurrency}{" "}
+            {totalShippingValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+          </div>
         </CardFooter>
         <div className="flex justify-end">
-          <Button type="submit" className="bg-[#E31E24] hover:bg-[#C71D23] text-white">
+          <Button type="submit" className="bg-[#E31E24] hover:bg-[#C71D23] text-white h-8 text-xs px-4">
             {loading ? "Processing..." : isEdit ? "Update AWB" : "Create AWB"}
           </Button>
         </div>
@@ -1474,21 +1612,24 @@ export default function AWBForm({ isEdit = false, awb }) {
 
       {/* Success Modal */}
       <Dialog open={success} onOpenChange={setSuccess}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{`AWB ${isEdit ? "Updated" : "Created"} Successfully`}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-sm">{`AWB ${isEdit ? "Updated" : "Created"} Successfully`}</DialogTitle>
+            <DialogDescription className="text-xs">
               {`The AWB has been ${isEdit ? "updated" : "created"} successfully. Click the button below to view AWB or go back to AWB Table.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex justify-center gap-2 sm:justify-center">
             <Button
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white h-7 text-xs px-3"
               onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}
             >
               Print
             </Button>
-            <Button className="bg-green-600 hover:bg-green-800 text-white" onClick={() => router.push(`/awb`)}>
+            <Button
+              className="bg-green-600 hover:bg-green-800 text-white h-7 text-xs px-3"
+              onClick={() => router.push(`/awb`)}
+            >
               Back to AWB Table
             </Button>
           </DialogFooter>
@@ -1499,23 +1640,24 @@ export default function AWBForm({ isEdit = false, awb }) {
       <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Search {searchType === "sender" ? "Sender" : "Receiver"}</DialogTitle>
-            <DialogDescription>Search for existing customers or enter a new name</DialogDescription>
+            <DialogTitle className="text-sm">Search {searchType === "sender" ? "Sender" : "Receiver"}</DialogTitle>
+            <DialogDescription className="text-xs">Search for existing customers or enter a new name</DialogDescription>
           </DialogHeader>
           <Command className="rounded-lg border shadow-md">
             <CommandInput
               placeholder={`Search ${searchType === "sender" ? "sender" : "receiver"} name...`}
               value={searchTerm}
               onValueChange={setSearchTerm}
+              className="text-xs"
             />
             <CommandList>
-              <CommandEmpty>No customers found. You can add a new one.</CommandEmpty>
+              <CommandEmpty className="text-xs">No customers found. You can add a new one.</CommandEmpty>
               <CommandGroup heading="Customers">
                 {filteredCustomers.map((customer) => (
                   <CommandItem
                     key={customer.name}
                     onSelect={() => handleSelectCustomer(customer)}
-                    className="cursor-pointer"
+                    className="cursor-pointer text-xs"
                   >
                     {customer.name}
                   </CommandItem>
@@ -1524,7 +1666,7 @@ export default function AWBForm({ isEdit = false, awb }) {
             </CommandList>
           </Command>
           <DialogFooter className="flex justify-between">
-            <Button variant="outline" onClick={() => setShowSearchDialog(false)}>
+            <Button variant="outline" onClick={() => setShowSearchDialog(false)} className="h-7 text-xs px-3">
               Cancel
             </Button>
             <Button
@@ -1537,6 +1679,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 setShowSearchDialog(false)
               }}
               disabled={!searchTerm}
+              className="h-7 text-xs px-3"
             >
               Use New Name
             </Button>
@@ -1551,77 +1694,81 @@ export default function AWBForm({ isEdit = false, awb }) {
       <Dialog open={showRateDialog} onOpenChange={setShowRateDialog}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Select Shipping Rate</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-sm">Select Shipping Rate</DialogTitle>
+            <DialogDescription className="text-xs">
               Compare rates from different carriers for your {totalChargeableWeight}kg package to {receiverCountry}
             </DialogDescription>
           </DialogHeader>
 
           {fetchingRates ? (
-            <div className="space-y-4 py-4">
-              <div className="flex items-center space-x-4">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-[250px]" />
-                  <Skeleton className="h-4 w-[200px]" />
+            <div className="space-y-2 py-2">
+              <div className="flex items-center space-x-2">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <div className="space-y-1">
+                  <Skeleton className="h-3 w-[200px]" />
+                  <Skeleton className="h-3 w-[150px]" />
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-[250px]" />
-                  <Skeleton className="h-4 w-[200px]" />
+              <div className="flex items-center space-x-2">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <div className="space-y-1">
+                  <Skeleton className="h-3 w-[200px]" />
+                  <Skeleton className="h-3 w-[150px]" />
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-[250px]" />
-                  <Skeleton className="h-4 w-[200px]" />
+              <div className="flex items-center space-x-2">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <div className="space-y-1">
+                  <Skeleton className="h-3 w-[200px]" />
+                  <Skeleton className="h-3 w-[150px]" />
                 </div>
               </div>
             </div>
           ) : rates ? (
             <Tabs defaultValue="all" className="w-full">
-              <TabsList className="grid grid-cols-2 mb-4">
-                <TabsTrigger value="all">All Carriers</TabsTrigger>
-                <TabsTrigger value="available">Available Carriers</TabsTrigger>
+              <TabsList className="grid grid-cols-2 mb-2">
+                <TabsTrigger value="all" className="text-xs">
+                  All Carriers
+                </TabsTrigger>
+                <TabsTrigger value="available" className="text-xs">
+                  Available Carriers
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="all" className="space-y-4">
+              <TabsContent value="all" className="space-y-2">
                 {rates.map((rate) => (
                   <Card key={rate.type} className={cn("overflow-hidden transition-all", !rate.success && "opacity-60")}>
-                    <CardHeader className={cn("py-3", getCourierInfo(rate.type).color)}>
+                    <CardHeader className={cn("py-2", getCourierInfo(rate.type).color)}>
                       <CardTitle
-                        className={cn("text-lg flex justify-between items-center", getCourierInfo(rate.type).textColor)}
+                        className={cn("text-sm flex justify-between items-center", getCourierInfo(rate.type).textColor)}
                       >
                         <span>{getCourierInfo(rate.type).name}</span>
                         {rate.success && (
-                          <Badge variant="outline" className="bg-white text-black">
+                          <Badge variant="outline" className="bg-white text-black text-xs">
                             Zone {rate.zone}
                           </Badge>
                         )}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="py-4">
+                    <CardContent className="py-2">
                       {rate.success ? (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-3 gap-2">
                             <div>
-                              <p className="text-sm text-muted-foreground">Sub Total</p>
-                              <p className="text-lg font-semibold">
+                              <p className="text-xs text-muted-foreground">Sub Total</p>
+                              <p className="text-sm font-semibold">
                                 ₹{rate.total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                               </p>
                             </div>
                             <div>
-                              <p className="text-sm text-muted-foreground">GST (18%)</p>
-                              <p className="text-lg font-semibold">
+                              <p className="text-xs text-muted-foreground">GST (18%)</p>
+                              <p className="text-sm font-semibold">
                                 ₹{Math.round(rate.GST).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                               </p>
                             </div>
                             <div>
-                              <p className="text-sm text-muted-foreground">Total</p>
-                              <p className="text-xl font-bold text-[#232C65]">
+                              <p className="text-xs text-muted-foreground">Total</p>
+                              <p className="text-lg font-bold text-[#232C65]">
                                 ₹{rate.totalWithGST.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                               </p>
                             </div>
@@ -1631,7 +1778,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                             <Button
                               onClick={() => handleSelectRate(rate, rate.type)}
                               className={cn(
-                                "mt-2",
+                                "h-7 text-xs px-3",
                                 getCourierInfo(rate.type).color,
                                 getCourierInfo(rate.type).textColor,
                               )}
@@ -1641,8 +1788,8 @@ export default function AWBForm({ isEdit = false, awb }) {
                           </div>
                         </div>
                       ) : (
-                        <div className="py-2">
-                          <p className="text-red-500">{rate.error || "Service unavailable for this route"}</p>
+                        <div className="py-1">
+                          <p className="text-red-500 text-xs">{rate.error || "Service unavailable for this route"}</p>
                         </div>
                       )}
                     </CardContent>
@@ -1650,43 +1797,43 @@ export default function AWBForm({ isEdit = false, awb }) {
                 ))}
               </TabsContent>
 
-              <TabsContent value="available" className="space-y-4">
+              <TabsContent value="available" className="space-y-2">
                 {rates.filter((r) => r.success).length > 0 ? (
                   rates
                     .filter((r) => r.success)
                     .map((rate) => (
                       <Card key={rate.type} className="overflow-hidden">
-                        <CardHeader className={cn("py-3", getCourierInfo(rate.type).color)}>
+                        <CardHeader className={cn("py-2", getCourierInfo(rate.type).color)}>
                           <CardTitle
                             className={cn(
-                              "text-lg flex justify-between items-center",
+                              "text-sm flex justify-between items-center",
                               getCourierInfo(rate.type).textColor,
                             )}
                           >
                             <span>{getCourierInfo(rate.type).name}</span>
-                            <Badge variant="outline" className="bg-white text-black">
+                            <Badge variant="outline" className="bg-white text-black text-xs">
                               Zone {rate.zone}
                             </Badge>
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="py-4">
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-3 gap-4">
+                        <CardContent className="py-2">
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-3 gap-2">
                               <div>
-                                <p className="text-sm text-muted-foreground">Sub Total</p>
-                                <p className="text-lg font-semibold">
+                                <p className="text-xs text-muted-foreground">Sub Total</p>
+                                <p className="text-sm font-semibold">
                                   ₹{rate.total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                                 </p>
                               </div>
                               <div>
-                                <p className="text-sm text-muted-foreground">GST (18%)</p>
-                                <p className="text-lg font-semibold">
+                                <p className="text-xs text-muted-foreground">GST (18%)</p>
+                                <p className="text-sm font-semibold">
                                   ₹{Math.round(rate.GST).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                                 </p>
                               </div>
                               <div>
-                                <p className="text-sm text-muted-foreground">Total</p>
-                                <p className="text-xl font-bold text-[#232C65]">₹{rate.totalWithGST}</p>
+                                <p className="text-xs text-muted-foreground">Total</p>
+                                <p className="text-lg font-bold text-[#232C65]">₹{rate.totalWithGST}</p>
                               </div>
                             </div>
 
@@ -1694,7 +1841,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                               <Button
                                 onClick={() => handleSelectRate(rate, rate.type)}
                                 className={cn(
-                                  "mt-2",
+                                  "h-7 text-xs px-3",
                                   getCourierInfo(rate.type).color,
                                   getCourierInfo(rate.type).textColor,
                                 )}
@@ -1707,20 +1854,20 @@ export default function AWBForm({ isEdit = false, awb }) {
                       </Card>
                     ))
                 ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No carriers available for this route and weight</p>
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground text-xs">No carriers available for this route and weight</p>
                   </div>
                 )}
               </TabsContent>
             </Tabs>
           ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Click "Fetch Shipping Rates" to see available options</p>
+            <div className="text-center py-4">
+              <p className="text-muted-foreground text-xs">Click "Fetch Shipping Rates" to see available options</p>
             </div>
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRateDialog(false)}>
+            <Button variant="outline" onClick={() => setShowRateDialog(false)} className="h-7 text-xs px-3">
               Close
             </Button>
           </DialogFooter>
