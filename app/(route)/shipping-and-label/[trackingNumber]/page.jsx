@@ -8,10 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { format } from "date-fns"
 import JsBarcode from "jsbarcode"
 
-export default function CombinedShippingPage() {
+export default function EnhancedShippingPage() {
   const { trackingNumber } = useParams()
   const [awbData, setAwbData] = useState(null)
   const [formattedKycType, setFormattedKycType] = useState("")
@@ -25,6 +28,14 @@ export default function CombinedShippingPage() {
   const [authorizationCopies, setAuthorizationCopies] = useState(1)
   const [kycDocumentUrl, setKycDocumentUrl] = useState(null)
   const [kycLoading, setKycLoading] = useState(false)
+
+  // New state for document selection and label options
+  const [selectedDocuments, setSelectedDocuments] = useState({
+    invoice: true,
+    labels: true,
+    authorization: true,
+  })
+  const [labelPrintOption, setLabelPrintOption] = useState("receiver-only") // "receiver-only" or "sender-receiver"
 
   useEffect(() => {
     const fetchAWBData = async () => {
@@ -284,23 +295,58 @@ export default function CombinedShippingPage() {
       `
   }
 
-  const generateLabelHTML = (boxNumber) => {
-    return `
-            <div class="barcode-top-right">
-                <svg class="barcode-svg" data-box="${boxNumber}"></svg>
+  const generateLabelHTML = (boxNumber, includeSender = false) => {
+    if (includeSender) {
+      return `
+        <div class="barcode-top-right">
+            <svg class="barcode-svg" data-box="${boxNumber}"></svg>
+        </div>
+        <div class="sender-receiver-section">
+            <div class="sender-section">
+                <h2 class="font-bold mb-2">Sender:</h2>
+                <p class="font-bold uppercase">${awbData?.sender?.name || ""}</p>
+                ${awbData?.sender?.companyName ? `<p class="font-bold uppercase">C/O ${awbData?.sender?.companyName}</p>` : ""}
+                <p>${awbData?.sender?.address || ""}</p>
+                <div class="contact-info">
+                    <p><strong>Zip:</strong> ${awbData?.sender?.zip || ""}</p>
+                    <p><strong>Country:</strong> ${awbData?.sender?.country || ""}</p>
+                </div>
+                <p>Cont: ${awbData?.sender?.contact || ""}</p>
             </div>
-            <div class="address-section">
+            <div class="receiver-section">
                 <h2 class="font-bold mb-2">Receiver:</h2>
                 <p class="font-bold uppercase">${awbData?.receiver?.name || ""}</p>
                 ${awbData?.receiver?.companyName ? `<p class="font-bold uppercase">C/O ${awbData?.receiver?.companyName}</p>` : ""}
                 <p>${awbData?.receiver?.address || ""}</p>
                 <div class="contact-info">
-                    <p><strong>Zip Code:</strong> ${awbData?.receiver?.zip || ""}</p>
+                    <p><strong>Zip:</strong> ${awbData?.receiver?.zip || ""}</p>
                     <p><strong>Country:</strong> ${awbData?.receiver?.country || ""}</p>
                 </div>
-                <p>Cont No: ${awbData?.receiver?.contact || ""}</p>
+                <p>Cont: ${awbData?.receiver?.contact || ""}</p>
             </div>
-        `
+        </div>
+        <div class="barcode-bottom">
+            <svg class="barcode-svg-bottom" data-box="${boxNumber}"></svg>
+        </div>
+      `
+    } else {
+      return `
+        <div class="barcode-top-right">
+            <svg class="barcode-svg" data-box="${boxNumber}"></svg>
+        </div>
+        <div class="address-section">
+            <h2 class="font-bold mb-2">Receiver:</h2>
+            <p class="font-bold uppercase">${awbData?.receiver?.name || ""}</p>
+            ${awbData?.receiver?.companyName ? `<p class="font-bold uppercase">C/O ${awbData?.receiver?.companyName}</p>` : ""}
+            <p>${awbData?.receiver?.address || ""}</p>
+            <div class="contact-info">
+                <p><strong>Zip Code:</strong> ${awbData?.receiver?.zip || ""}</p>
+                <p><strong>Country:</strong> ${awbData?.receiver?.country || ""}</p>
+            </div>
+            <p>Cont No: ${awbData?.receiver?.contact || ""}</p>
+        </div>
+      `
+    }
   }
 
   const generateDHLAuthorizationHTML = () => {
@@ -549,74 +595,269 @@ export default function CombinedShippingPage() {
     `
   }
 
-  const generatePageLayout = (boxesOnPage, startBox) => {
+  const generatePageLayout = (boxesOnPage, startBox, includeSender = false) => {
     const boxCount = Math.min(boxesOnPage, 4)
 
     if (boxCount === 1) {
-      return `
-                <div class="page">
-                    <div class="label-full">
-                        ${generateLabelHTML(startBox)}
-                    </div>
-                </div>
-            `
+      if (includeSender) {
+        return `
+          <div class="page">
+              <div class="label-full-sender">
+                  <div class="sender-half">
+                      ${generateLabelHTML(startBox, false).replace("Receiver:", "Sender:").replace(awbData?.receiver?.name, awbData?.sender?.name).replace(awbData?.receiver?.companyName, awbData?.sender?.companyName).replace(awbData?.receiver?.address, awbData?.sender?.address).replace(awbData?.receiver?.zip, awbData?.sender?.zip).replace(awbData?.receiver?.country, awbData?.sender?.country).replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+                  </div>
+                  <div class="receiver-half">
+                      ${generateLabelHTML(startBox, false)}
+                  </div>
+              </div>
+          </div>
+        `
+      } else {
+        return `
+          <div class="page">
+              <div class="label-full">
+                  ${generateLabelHTML(startBox)}
+              </div>
+          </div>
+        `
+      }
     } else if (boxCount === 2) {
-      return `
-                <div class="page">
-                    <div class="label-half">
-                        ${generateLabelHTML(startBox)}
-                    </div>
-                    <div class="label-half">
-                        ${generateLabelHTML(startBox + 1)}
-                    </div>
-                </div>
-            `
+      if (includeSender) {
+        return `
+          <div class="page">
+              <div class="label-half-sender">
+                  <div class="sender-quarter">
+                      ${generateLabelHTML(startBox, false).replace("Receiver:", "Sender:").replace(awbData?.receiver?.name, awbData?.sender?.name).replace(awbData?.receiver?.companyName, awbData?.sender?.companyName).replace(awbData?.receiver?.address, awbData?.sender?.address).replace(awbData?.receiver?.zip, awbData?.sender?.zip).replace(awbData?.receiver?.country, awbData?.sender?.country).replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+                  </div>
+                  <div class="receiver-quarter">
+                      ${generateLabelHTML(startBox, false)}
+                  </div>
+              </div>
+              <div class="label-half-sender">
+                  <div class="sender-quarter">
+                      ${generateLabelHTML(startBox + 1, false)
+                        .replace("Receiver:", "Sender:")
+                        .replace(awbData?.receiver?.name, awbData?.sender?.name)
+                        .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
+                        .replace(awbData?.receiver?.address, awbData?.sender?.address)
+                        .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
+                        .replace(awbData?.receiver?.country, awbData?.sender?.country)
+                        .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+                  </div>
+                  <div class="receiver-quarter">
+                      ${generateLabelHTML(startBox + 1, false)}
+                  </div>
+              </div>
+          </div>
+        `
+      } else {
+        return `
+          <div class="page">
+              <div class="label-half">
+                  ${generateLabelHTML(startBox)}
+              </div>
+              <div class="label-half">
+                  ${generateLabelHTML(startBox + 1)}
+              </div>
+          </div>
+        `
+      }
     } else if (boxCount === 3) {
-      return `
-                <div class="page">
-                    <div class="top-half">
-                        <div class="label-quarter">
-                            ${generateLabelHTML(startBox)}
-                        </div>
-                        <div class="label-quarter">
-                            ${generateLabelHTML(startBox + 1)}
-                        </div>
-                    </div>
-                    <div class="bottom-half">
-                        <div class="label-half-full">
-                            ${generateLabelHTML(startBox + 2)}
-                        </div>
-                    </div>
-                </div>
-            `
+      if (includeSender) {
+        return `
+          <div class="page">
+              <div class="top-half">
+                  <div class="label-quarter-sender">
+                      <div class="sender-eighth">
+                          ${generateLabelHTML(startBox, false).replace("Receiver:", "Sender:").replace(awbData?.receiver?.name, awbData?.sender?.name).replace(awbData?.receiver?.companyName, awbData?.sender?.companyName).replace(awbData?.receiver?.address, awbData?.sender?.address).replace(awbData?.receiver?.zip, awbData?.sender?.zip).replace(awbData?.receiver?.country, awbData?.sender?.country).replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+                      </div>
+                      <div class="receiver-eighth">
+                          ${generateLabelHTML(startBox, false)}
+                      </div>
+                  </div>
+                  <div class="label-quarter-sender">
+                      <div class="sender-eighth">
+                          ${generateLabelHTML(startBox + 1, false)
+                            .replace("Receiver:", "Sender:")
+                            .replace(awbData?.receiver?.name, awbData?.sender?.name)
+                            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
+                            .replace(awbData?.receiver?.address, awbData?.sender?.address)
+                            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
+                            .replace(awbData?.receiver?.country, awbData?.sender?.country)
+                            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+                      </div>
+                      <div class="receiver-eighth">
+                          ${generateLabelHTML(startBox + 1, false)}
+                      </div>
+                  </div>
+              </div>
+              <div class="bottom-half">
+                  <div class="label-half-full">
+                      ${generateLabelHTML(startBox + 2)}
+                  </div>
+              </div>
+          </div>
+        `
+      } else {
+        return `
+          <div class="page">
+              <div class="top-half">
+                  <div class="label-quarter">
+                      ${generateLabelHTML(startBox)}
+                  </div>
+                  <div class="label-quarter">
+                      ${generateLabelHTML(startBox + 1)}
+                  </div>
+              </div>
+              <div class="bottom-half">
+                  <div class="label-half-full">
+                      ${generateLabelHTML(startBox + 2)}
+                  </div>
+              </div>
+          </div>
+        `
+      }
     } else if (boxCount === 4) {
-      return `
-                <div class="page">
-                    <div class="top-half">
-                        <div class="label-quarter">
-                            ${generateLabelHTML(startBox)}
-                        </div>
-                        <div class="label-quarter">
-                            ${generateLabelHTML(startBox + 1)}
-                        </div>
-                    </div>
-                    <div class="bottom-half">
-                        <div class="label-quarter">
-                            ${generateLabelHTML(startBox + 2)}
-                        </div>
-                        <div class="label-quarter">
-                            ${generateLabelHTML(startBox + 3)}
-                        </div>
-                    </div>
-                </div>
-            `
+      if (includeSender) {
+        return `
+          <div class="page">
+              <div class="top-half">
+                  <div class="label-quarter-sender">
+                      <div class="sender-eighth">
+                          ${generateLabelHTML(startBox, false).replace("Receiver:", "Sender:").replace(awbData?.receiver?.name, awbData?.sender?.name).replace(awbData?.receiver?.companyName, awbData?.sender?.companyName).replace(awbData?.receiver?.address, awbData?.sender?.address).replace(awbData?.receiver?.zip, awbData?.sender?.zip).replace(awbData?.receiver?.country, awbData?.sender?.country).replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+                      </div>
+                      <div class="receiver-eighth">
+                          ${generateLabelHTML(startBox, false)}
+                      </div>
+                  </div>
+                  <div class="label-quarter-sender">
+                      <div class="sender-eighth">
+                          ${generateLabelHTML(startBox + 1, false)
+                            .replace("Receiver:", "Sender:")
+                            .replace(awbData?.receiver?.name, awbData?.sender?.name)
+                            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
+                            .replace(awbData?.receiver?.address, awbData?.sender?.address)
+                            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
+                            .replace(awbData?.receiver?.country, awbData?.sender?.country)
+                            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+                      </div>
+                      <div class="receiver-eighth">
+                          ${generateLabelHTML(startBox + 1, false)}
+                      </div>
+                  </div>
+              </div>
+              <div class="bottom-half">
+                  <div class="label-quarter-sender">
+                      <div class="sender-eighth">
+                          ${generateLabelHTML(startBox + 2, false)
+                            .replace("Receiver:", "Sender:")
+                            .replace(awbData?.receiver?.name, awbData?.sender?.name)
+                            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
+                            .replace(awbData?.receiver?.address, awbData?.sender?.address)
+                            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
+                            .replace(awbData?.receiver?.country, awbData?.sender?.country)
+                            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+                      </div>
+                      <div class="receiver-eighth">
+                          ${generateLabelHTML(startBox + 2, false)}
+                      </div>
+                  </div>
+                  <div class="label-quarter-sender">
+                      <div class="sender-eighth">
+                          ${generateLabelHTML(startBox + 3, false)
+                            .replace("Receiver:", "Sender:")
+                            .replace(awbData?.receiver?.name, awbData?.sender?.name)
+                            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
+                            .replace(awbData?.receiver?.address, awbData?.sender?.address)
+                            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
+                            .replace(awbData?.receiver?.country, awbData?.sender?.country)
+                            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+                      </div>
+                      <div class="receiver-eighth">
+                          ${generateLabelHTML(startBox + 3, false)}
+                      </div>
+                  </div>
+              </div>
+          </div>
+        `
+      } else {
+        return `
+          <div class="page">
+              <div class="top-half">
+                  <div class="label-quarter">
+                      ${generateLabelHTML(startBox)}
+                  </div>
+                  <div class="label-quarter">
+                      ${generateLabelHTML(startBox + 1)}
+                  </div>
+              </div>
+              <div class="bottom-half">
+                  <div class="label-quarter">
+                      ${generateLabelHTML(startBox + 2)}
+                  </div>
+                  <div class="label-quarter">
+                      ${generateLabelHTML(startBox + 3)}
+                  </div>
+              </div>
+          </div>
+        `
+      }
     }
   }
 
-  const handleCombinedPrint = () => {
+  const renderBarcodes = (includeSender = false) => {
+    setTimeout(() => {
+      const barcodeElements = document.querySelectorAll(".barcode-svg, .barcode-svg-bottom")
+      barcodeElements.forEach((element) => {
+        const boxNumber = element.getAttribute("data-box")
+
+        let barcodeHeight = 40
+        let barcodeWidth = 1.2
+
+        const labelParent = element.closest(
+          ".label-full, .label-half, .label-quarter, .label-half-full, .label-full-sender, .label-half-sender, .label-quarter-sender, .sender-half, .receiver-half, .sender-quarter, .receiver-quarter, .sender-eighth, .receiver-eighth",
+        )
+
+        if (
+          labelParent?.classList.contains("label-full") ||
+          labelParent?.classList.contains("sender-half") ||
+          labelParent?.classList.contains("receiver-half")
+        ) {
+          barcodeHeight = 60
+          barcodeWidth = 2
+        } else if (
+          labelParent?.classList.contains("label-half") ||
+          labelParent?.classList.contains("label-half-full") ||
+          labelParent?.classList.contains("sender-quarter") ||
+          labelParent?.classList.contains("receiver-quarter")
+        ) {
+          barcodeHeight = 45
+          barcodeWidth = 1.5
+        } else if (
+          labelParent?.classList.contains("label-quarter") ||
+          labelParent?.classList.contains("sender-eighth") ||
+          labelParent?.classList.contains("receiver-eighth")
+        ) {
+          barcodeHeight = 35
+          barcodeWidth = 1
+        }
+
+        JsBarcode(element, awbData?.trackingNumber || "N/A", {
+          format: "CODE128",
+          width: barcodeWidth,
+          height: barcodeHeight,
+          displayValue: false,
+          fontSize: 0,
+          margin: 2,
+        })
+      })
+    }, 200)
+  }
+
+  // Individual print functions
+  const handleInvoicePrint = () => {
     const originalContent = document.body.innerHTML
 
-    // Generate invoice copies
     let allInvoices = ""
     for (let i = 0; i < invoiceCopies; i++) {
       allInvoices += `
@@ -629,7 +870,24 @@ export default function CombinedShippingPage() {
       }
     }
 
-    // Generate label pages
+    document.body.innerHTML = `
+      <style>
+        ${getCommonStyles()}
+      </style>
+      ${allInvoices}
+    `
+
+    setTimeout(() => {
+      window.print()
+      document.body.innerHTML = originalContent
+      window.location.reload()
+    }, 300)
+  }
+
+  const handleLabelsPrint = () => {
+    const originalContent = document.body.innerHTML
+    const includeSender = labelPrintOption === "sender-receiver"
+
     const totalPages = Math.ceil(totalBoxes / 4)
     let allLabels = ""
 
@@ -637,16 +895,118 @@ export default function CombinedShippingPage() {
       const startBox = page * 4 + 1
       const boxesOnThisPage = Math.min(4, totalBoxes - page * 4)
 
-      allLabels += generatePageLayout(boxesOnThisPage, startBox)
+      allLabels += generatePageLayout(boxesOnThisPage, startBox, includeSender)
 
       if (page < totalPages - 1) {
         allLabels += '<div class="page-break"></div>'
       }
     }
 
-    // Generate authorization letters
+    document.body.innerHTML = `
+      <style>
+        ${getCommonStyles()}
+      </style>
+      ${allLabels}
+    `
+
+    renderBarcodes(includeSender)
+
+    setTimeout(() => {
+      window.print()
+      document.body.innerHTML = originalContent
+      window.location.reload()
+    }, 500)
+  }
+
+  const handleAuthorizationPrint = () => {
+    if (!authorizationType || authorizationCopies === 0) return
+
+    const originalContent = document.body.innerHTML
+
     let allAuthorizations = ""
-    if (authorizationType && authorizationCopies > 0) {
+    for (let i = 0; i < authorizationCopies; i++) {
+      allAuthorizations += `
+      <div class="auth-page">
+        ${authorizationType === "dhl" ? generateDHLAuthorizationHTML() : generateFedExAuthorizationHTML()}
+      </div>
+    `
+      if (i < authorizationCopies - 1) {
+        allAuthorizations += '<div class="page-break"></div>'
+      }
+    }
+
+    document.body.innerHTML = `
+      <style>
+        ${getCommonStyles()}
+      </style>
+      ${allAuthorizations}
+    `
+
+    setTimeout(() => {
+      window.print()
+      document.body.innerHTML = originalContent
+      window.location.reload()
+    }, 300)
+  }
+
+  const handleCombinedPrint = () => {
+    const originalContent = document.body.innerHTML
+    const includeSender = labelPrintOption === "sender-receiver"
+
+    let combinedContent = ""
+
+    // Generate invoice copies if selected
+    if (selectedDocuments.invoice && invoiceCopies > 0) {
+      let allInvoices = ""
+      for (let i = 0; i < invoiceCopies; i++) {
+        allInvoices += `
+        <div class="invoice-page">
+          ${generateInvoiceHTML()}
+        </div>
+      `
+        if (i < invoiceCopies - 1) {
+          allInvoices += '<div class="page-break"></div>'
+        }
+      }
+      combinedContent += allInvoices
+    }
+
+    // Add page break between invoices and labels
+    if (selectedDocuments.invoice && invoiceCopies > 0 && selectedDocuments.labels && totalBoxes > 0) {
+      combinedContent += '<div class="page-break"></div>'
+    }
+
+    // Generate label pages if selected
+    if (selectedDocuments.labels && totalBoxes > 0) {
+      const totalPages = Math.ceil(totalBoxes / 4)
+      let allLabels = ""
+
+      for (let page = 0; page < totalPages; page++) {
+        const startBox = page * 4 + 1
+        const boxesOnThisPage = Math.min(4, totalBoxes - page * 4)
+
+        allLabels += generatePageLayout(boxesOnThisPage, startBox, includeSender)
+
+        if (page < totalPages - 1) {
+          allLabels += '<div class="page-break"></div>'
+        }
+      }
+      combinedContent += allLabels
+    }
+
+    // Add page break between labels and authorization
+    if (
+      ((selectedDocuments.invoice && invoiceCopies > 0) || (selectedDocuments.labels && totalBoxes > 0)) &&
+      selectedDocuments.authorization &&
+      authorizationType &&
+      authorizationCopies > 0
+    ) {
+      combinedContent += '<div class="page-break"></div>'
+    }
+
+    // Generate authorization letters if selected
+    if (selectedDocuments.authorization && authorizationType && authorizationCopies > 0) {
+      let allAuthorizations = ""
       for (let i = 0; i < authorizationCopies; i++) {
         allAuthorizations += `
         <div class="auth-page">
@@ -657,33 +1017,32 @@ export default function CombinedShippingPage() {
           allAuthorizations += '<div class="page-break"></div>'
         }
       }
-    }
-
-    // Combine content with proper page breaks
-    let combinedContent = ""
-
-    if (invoiceCopies > 0) {
-      combinedContent += allInvoices
-    }
-
-    if (invoiceCopies > 0 && totalBoxes > 0) {
-      combinedContent += '<div class="page-break"></div>'
-    }
-
-    if (totalBoxes > 0) {
-      combinedContent += allLabels
-    }
-
-    if ((invoiceCopies > 0 || totalBoxes > 0) && authorizationType && authorizationCopies > 0) {
-      combinedContent += '<div class="page-break"></div>'
-    }
-
-    if (authorizationType && authorizationCopies > 0) {
       combinedContent += allAuthorizations
     }
 
+    if (!combinedContent) {
+      alert("Please select at least one document type to print.")
+      return
+    }
+
     document.body.innerHTML = `
-    <style>
+      <style>
+        ${getCommonStyles()}
+      </style>
+      ${combinedContent}
+    `
+
+    renderBarcodes(includeSender)
+
+    setTimeout(() => {
+      window.print()
+      document.body.innerHTML = originalContent
+      window.location.reload()
+    }, 500)
+  }
+
+  const getCommonStyles = () => {
+    return `
   @page {
     size: A4;
     margin: 15mm;
@@ -812,13 +1171,6 @@ export default function CombinedShippingPage() {
     flex-direction: row;
   }
 
-  /* Fixed height table container */
-  .invoice-page .table-container {
-    height: 540px;
-    margin-bottom: 8px;
-    overflow: hidden;
-  }
-
   .invoice-page table {
     width: 100%;
     border-collapse: collapse;
@@ -880,7 +1232,6 @@ export default function CombinedShippingPage() {
     width: 144px;
   }
 
-  /* Declaration and signature at bottom */
   .invoice-page .declaration-section {
     margin-top: auto;
     padding-top: 8px;
@@ -911,6 +1262,24 @@ export default function CombinedShippingPage() {
     position: relative;
     background: white;
   }
+
+  .label-full-sender {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sender-half, .receiver-half {
+    width: 100%;
+    height: calc(50% - 5px);
+    border: 2px solid #000;
+    border-radius: 10px;
+    padding: 15px;
+    position: relative;
+    background: white;
+  }
   
   .label-half {
     width: 100%;
@@ -920,6 +1289,25 @@ export default function CombinedShippingPage() {
     padding: 15px;
     position: relative;
     margin-bottom: 10px;
+    background: white;
+  }
+
+  .label-half-sender {
+    width: 100%;
+    height: calc(50% - 5px);
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .sender-quarter, .receiver-quarter {
+    width: calc(50% - 5px);
+    height: 100%;
+    border: 2px solid #000;
+    border-radius: 8px;
+    padding: 12px;
+    position: relative;
     background: white;
   }
   
@@ -948,6 +1336,24 @@ export default function CombinedShippingPage() {
     position: relative;
     background: white;
   }
+
+  .label-quarter-sender {
+    width: calc(50% - 5px);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .sender-eighth, .receiver-eighth {
+    width: 100%;
+    height: calc(50% - 2.5px);
+    border: 2px solid #000;
+    border-radius: 6px;
+    padding: 8px;
+    position: relative;
+    background: white;
+  }
   
   .label-half-full {
     width: 100%;
@@ -963,10 +1369,32 @@ export default function CombinedShippingPage() {
     width: 70%;
     padding-top: 10px;
   }
+
+  .sender-receiver-section {
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 60px);
+    gap: 10px;
+  }
+
+  .sender-section, .receiver-section {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
   
   .barcode-top-right {
     position: absolute;
     top: 10px;
+    right: 10px;
+    width: 25%;
+    text-align: right;
+  }
+
+  .barcode-bottom {
+    position: absolute;
+    bottom: 10px;
     right: 10px;
     width: 25%;
     text-align: right;
@@ -981,15 +1409,24 @@ export default function CombinedShippingPage() {
   /* Responsive font sizes for labels */
   .label-full h2 { font-size: 28pt; margin: 0 0 10px 0; }
   .label-full p { font-size: 24pt; margin: 4px 0; line-height: 1.2; }
+
+  .sender-half h2, .receiver-half h2 { font-size: 20pt; margin: 0 0 8px 0; }
+  .sender-half p, .receiver-half p { font-size: 18pt; margin: 3px 0; line-height: 1.2; }
   
   .label-half h2 { font-size: 20pt; margin: 0 0 8px 0; }
   .label-half p { font-size: 18pt; margin: 3px 0; line-height: 1.2; }
+
+  .sender-quarter h2, .receiver-quarter h2 { font-size: 14pt; margin: 0 0 6px 0; }
+  .sender-quarter p, .receiver-quarter p { font-size: 12pt; margin: 2px 0; line-height: 1.1; }
   
   .label-half-full h2 { font-size: 20pt; margin: 0 0 8px 0; }
   .label-half-full p { font-size: 18pt; margin: 3px 0; line-height: 1.2; }
   
   .label-quarter h2 { font-size: 14pt; margin: 0 0 6px 0; }
   .label-quarter p { font-size: 12pt; margin: 2px 0; line-height: 1.1; }
+
+  .sender-eighth h2, .receiver-eighth h2 { font-size: 10pt; margin: 0 0 4px 0; }
+  .sender-eighth p, .receiver-eighth p { font-size: 8pt; margin: 1px 0; line-height: 1.0; }
   
   .address-section p {
     word-wrap: break-word;
@@ -1004,7 +1441,7 @@ export default function CombinedShippingPage() {
     text-transform: uppercase;
   }
   
-  /* Authorization Letter Styles - Full Page */
+  /* Authorization Letter Styles */
   .auth-page {
     width: 100%;
     min-height: 100vh;
@@ -1143,51 +1580,7 @@ export default function CombinedShippingPage() {
     padding-top: 8px;
     padding-bottom: 8px;
   }
-</style>
-    ${combinedContent}
-  `
-
-    // Render barcodes for labels
-    setTimeout(() => {
-      const barcodeElements = document.querySelectorAll(".barcode-svg")
-      barcodeElements.forEach((element) => {
-        const boxNumber = element.getAttribute("data-box")
-
-        let barcodeHeight = 40
-        let barcodeWidth = 1.2
-
-        const labelParent = element.closest(".label-full, .label-half, .label-quarter, .label-half-full")
-
-        if (labelParent?.classList.contains("label-full")) {
-          barcodeHeight = 60
-          barcodeWidth = 2
-        } else if (
-          labelParent?.classList.contains("label-half") ||
-          labelParent?.classList.contains("label-half-full")
-        ) {
-          barcodeHeight = 45
-          barcodeWidth = 1.5
-        } else if (labelParent?.classList.contains("label-quarter")) {
-          barcodeHeight = 35
-          barcodeWidth = 1
-        }
-
-        JsBarcode(element, awbData?.trackingNumber || "N/A", {
-          format: "CODE128",
-          width: barcodeWidth,
-          height: barcodeHeight,
-          displayValue: false,
-          fontSize: 0,
-          margin: 2,
-        })
-      })
-
-      setTimeout(() => {
-        window.print()
-        document.body.innerHTML = originalContent
-        window.location.reload()
-      }, 300)
-    }, 200)
+`
   }
 
   const getLayoutDescription = () => {
@@ -1198,6 +1591,13 @@ export default function CombinedShippingPage() {
 
     const pages = Math.ceil(totalBoxes / 4)
     return `${totalBoxes} labels across ${pages} page${pages > 1 ? "s" : ""} (max 4 labels per page)`
+  }
+
+  const handleDocumentSelection = (documentType, checked) => {
+    setSelectedDocuments((prev) => ({
+      ...prev,
+      [documentType]: checked,
+    }))
   }
 
   if (loading) {
@@ -1227,17 +1627,52 @@ export default function CombinedShippingPage() {
   }
 
   const totalAmount = calculateTotal()
-  const amountInWords =
-    numberToWords(Math.round(totalAmount)) + " " + (awbData.shippingCurrency === "₹" ? "Rupees" : "Dollars") + " Only"
 
   return (
     <div className="container mx-auto px-4 py-6 bg-gradient-to-b from-indigo-50 to-white min-h-screen">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-center text-[#232C65] mb-2">Shipping Documents</h1>
+        <h1 className="text-3xl font-bold text-center text-[#232C65] mb-2">Enhanced Shipping Documents</h1>
         <p className="text-center text-gray-600">
           Generate and print shipping invoices, labels, authorization letters, and KYC documents for tracking number:{" "}
           {trackingNumber}
         </p>
+      </div>
+
+      {/* Document Selection Section */}
+      <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+        <h2 className="text-lg font-semibold mb-3 text-[#232C65]">Select Documents to Print</h2>
+        <div className="flex flex-wrap gap-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="select-invoice"
+              checked={selectedDocuments.invoice}
+              onCheckedChange={(checked) => handleDocumentSelection("invoice", checked)}
+            />
+            <Label htmlFor="select-invoice" className="text-sm font-medium">
+              Shipping Invoice ({invoiceCopies} copies)
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="select-labels"
+              checked={selectedDocuments.labels}
+              onCheckedChange={(checked) => handleDocumentSelection("labels", checked)}
+            />
+            <Label htmlFor="select-labels" className="text-sm font-medium">
+              Shipping Labels ({totalBoxes} labels)
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="select-authorization"
+              checked={selectedDocuments.authorization}
+              onCheckedChange={(checked) => handleDocumentSelection("authorization", checked)}
+            />
+            <Label htmlFor="select-authorization" className="text-sm font-medium">
+              Authorization Letter ({authorizationType ? `${authorizationCopies} copies` : "Not configured"})
+            </Label>
+          </div>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -1274,6 +1709,16 @@ export default function CombinedShippingPage() {
               </p>
             </div>
           </CardContent>
+          <CardFooter>
+            <Button
+              onClick={handleInvoicePrint}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <Printer className="h-4 w-4" />
+              Print Invoice Only
+            </Button>
+          </CardFooter>
         </Card>
 
         {/* Labels Section */}
@@ -1286,26 +1731,60 @@ export default function CombinedShippingPage() {
             <CardDescription>Configure and preview shipping label layout</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2 mb-4">
-              <label htmlFor="totalBoxes" className="text-sm font-medium">
-                Total Boxes:
-              </label>
-              <input
-                id="totalBoxes"
-                type="number"
-                min="1"
-                max="100"
-                value={totalBoxes}
-                onChange={(e) => setTotalBoxes(Math.max(1, Math.min(100, Number.parseInt(e.target.value) || 1)))}
-                className="w-16 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <label htmlFor="totalBoxes" className="text-sm font-medium">
+                  Total Boxes:
+                </label>
+                <input
+                  id="totalBoxes"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={totalBoxes}
+                  onChange={(e) => setTotalBoxes(Math.max(1, Math.min(100, Number.parseInt(e.target.value) || 1)))}
+                  className="w-16 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Label Content:</Label>
+                <RadioGroup value={labelPrintOption} onValueChange={setLabelPrintOption}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="receiver-only" id="receiver-only" />
+                    <Label htmlFor="receiver-only" className="text-sm">
+                      Receiver Details Only
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="sender-receiver" id="sender-receiver" />
+                    <Label htmlFor="sender-receiver" className="text-sm">
+                      Sender + Receiver Details
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
             </div>
-            <div className="text-sm text-gray-600">
+
+            <div className="text-sm text-gray-600 mt-4">
               <p>• Layout: {getLayoutDescription()}</p>
-              <p>• Each label includes barcode and receiver address</p>
-              <p>• Optimized for efficient page usage</p>
+              <p>• Each label includes barcode and address details</p>
+              <p>
+                •{" "}
+                {labelPrintOption === "sender-receiver" ? "Sender and receiver on each label" : "Receiver details only"}
+              </p>
             </div>
           </CardContent>
+          <CardFooter>
+            <Button
+              onClick={handleLabelsPrint}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <Printer className="h-4 w-4" />
+              Print Labels Only
+            </Button>
+          </CardFooter>
         </Card>
 
         {/* Authorization Letters Section */}
@@ -1366,6 +1845,17 @@ export default function CombinedShippingPage() {
               <p>• Each copy on separate page</p>
             </div>
           </CardContent>
+          <CardFooter>
+            <Button
+              onClick={handleAuthorizationPrint}
+              disabled={!authorizationType || authorizationCopies === 0}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <Printer className="h-4 w-4" />
+              Print Authorization Only
+            </Button>
+          </CardFooter>
         </Card>
 
         {/* KYC Document Section */}
@@ -1425,22 +1915,44 @@ export default function CombinedShippingPage() {
         <div className="bg-blue-50 p-6 rounded-lg mb-6">
           <h2 className="text-xl font-semibold mb-3 text-[#232C65]">Print Summary</h2>
           <div className="grid md:grid-cols-3 gap-4 text-sm">
-            <div>
-              <p className="font-medium">Invoices: {invoiceCopies} copies</p>
+            <div
+              className={`p-3 rounded ${selectedDocuments.invoice ? "bg-green-100 border-green-300" : "bg-gray-100 border-gray-300"} border`}
+            >
+              <p className="font-medium">
+                {selectedDocuments.invoice ? "✅" : "❌"} Invoices:{" "}
+                {selectedDocuments.invoice ? `${invoiceCopies} copies` : "Not selected"}
+              </p>
               <p className="text-gray-600">Each invoice on separate page</p>
             </div>
-            <div>
-              <p className="font-medium">Labels: {totalBoxes} labels</p>
+            <div
+              className={`p-3 rounded ${selectedDocuments.labels ? "bg-green-100 border-green-300" : "bg-gray-100 border-gray-300"} border`}
+            >
+              <p className="font-medium">
+                {selectedDocuments.labels ? "✅" : "❌"} Labels:{" "}
+                {selectedDocuments.labels ? `${totalBoxes} labels` : "Not selected"}
+              </p>
               <p className="text-gray-600">
-                {Math.ceil(totalBoxes / 4)} page{Math.ceil(totalBoxes / 4) > 1 ? "s" : ""} total
+                {selectedDocuments.labels
+                  ? `${Math.ceil(totalBoxes / 4)} page${Math.ceil(totalBoxes / 4) > 1 ? "s" : ""} total`
+                  : "No labels"}
+              </p>
+              <p className="text-xs text-blue-600">
+                {labelPrintOption === "sender-receiver" ? "With sender + receiver" : "Receiver only"}
               </p>
             </div>
-            <div>
+            <div
+              className={`p-3 rounded ${selectedDocuments.authorization && authorizationType ? "bg-green-100 border-green-300" : "bg-gray-100 border-gray-300"} border`}
+            >
               <p className="font-medium">
-                Authorization: {authorizationType ? `${authorizationCopies} copies` : "None selected"}
+                {selectedDocuments.authorization && authorizationType ? "✅" : "❌"} Authorization:{" "}
+                {selectedDocuments.authorization && authorizationType
+                  ? `${authorizationCopies} copies`
+                  : "Not selected"}
               </p>
               <p className="text-gray-600">
-                {authorizationType ? `${authorizationType.toUpperCase()} letter` : "No authorization letter"}
+                {selectedDocuments.authorization && authorizationType
+                  ? `${authorizationType.toUpperCase()} letter`
+                  : "No authorization letter"}
               </p>
             </div>
           </div>
@@ -1459,7 +1971,7 @@ export default function CombinedShippingPage() {
             className="flex items-center gap-2 bg-[#232C65] hover:bg-[#1a2150] px-8 py-3"
           >
             <Printer className="h-5 w-5" />
-            Print Shipping Documents
+            Print Selected Documents
           </Button>
 
           <Button
