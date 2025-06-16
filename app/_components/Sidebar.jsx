@@ -39,7 +39,7 @@ export function AppSidebar() {
       icon: LayoutDashboard,
     },
     {
-      title: "Air Way Bills",
+      title: "Booking",
       url: "/awb",
       icon: Box,
     },

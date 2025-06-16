@@ -54,7 +54,7 @@ function Dashboard() {
         Welcome Back,{" "}
         <span className="text-[#E31E24]">{localStorage?.getItem("name")}!</span>
       </h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader>
             <CardTitle>Total AWBs</CardTitle>
@@ -77,6 +77,14 @@ function Dashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-4xl font-bold">Get PDF Rates</p>
+          </CardContent>
+        </Card>
+        <Card onClick={() => window.location.href = "/awb/create"}>
+          <CardHeader>
+            <CardTitle>Booking</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">New Booking</p>
           </CardContent>
         </Card>
       </div>

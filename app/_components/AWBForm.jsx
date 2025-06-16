@@ -865,7 +865,7 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   return (
     <div className="container mx-auto text-xs">
-      <h1 className="text-lg font-bold text-center text-[#232C65] -mt-4">{isEdit ? "Edit AWB" : "Create AWB"}</h1>
+      <h1 className="text-lg font-bold text-center text-[#232C65] -mt-4">{isEdit ? "Edit Booking" : "New Booking"}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-1">
         {/* Basic Details */}
@@ -1799,7 +1799,7 @@ export default function AWBForm({ isEdit = false, awb }) {
         )}
         <div className="flex justify-end">
           <Button type="submit" className="bg-[#E31E24] hover:bg-[#C71D23] text-white h-6 text-xs px-3">
-            {loading ? "Processing..." : isEdit ? "Update AWB" : "Create AWB"}
+            {loading ? "Processing..." : isEdit ? "Update" : "Submit"}
           </Button>
         </div>
       </form>
