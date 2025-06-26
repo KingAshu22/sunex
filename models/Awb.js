@@ -11,6 +11,7 @@ const AwbSchema = new Schema({
   forwardingLink: String,
   shippingCurrency: String,
   via: String,
+  refCode: String,
   sender: UserSchema,
   receiver: UserSchema,
   billTo: UserSchema,
@@ -33,6 +34,9 @@ const AwbSchema = new Schema({
     GST: String,
     weight: String,
   },
+  vendor: String,
+  cNote: String,
+  otsWeight: String,
 });
 
 const Awb = models.Awb || model("Awb", AwbSchema);

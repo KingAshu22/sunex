@@ -31,12 +31,6 @@ import ItemNameAutocomplete from "./ItemNameAutoComplete"
 import { Badge } from "@/components/ui/badge"
 import { Check, ChevronsUpDown } from "lucide-react"
 
-const mockHsnData = [
-  { code: "482030", item: "Document" },
-  { code: "123456", item: "Sample Item 1" },
-  { code: "789012", item: "Sample Item 2" },
-]
-
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
 
@@ -90,6 +84,7 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [trackingNumber, setTrackingNumber] = useState(awb?.trackingNumber || "")
   const [via, setVia] = useState(awb?.via || "Air Shipment")
   const [shipmentType, setShipmentType] = useState(awb?.shipmentType || "Non Document")
+  const [refCode, setRefCode] = useState(awb?.refCode || "");
 
   //Forwarding Details
   const [forwardingNo, setForwardingNo] = useState(awb?.forwardingNo || "")
@@ -694,6 +689,7 @@ export default function AWBForm({ isEdit = false, awb }) {
         trackingNumber,
         via,
         shipmentType,
+        refCode,
         forwardingNo,
         forwardingLink,
         shippingCurrency,
@@ -873,7 +869,7 @@ export default function AWBForm({ isEdit = false, awb }) {
           <CardHeader className="-mt-4">
             <CardTitle className="text-sm text-[#232C65]">Basic Details</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-7 gap-1 -my-6">
+          <CardContent className="grid grid-cols-8 gap-1 -my-6">
             <div className="space-y-1">
               <Label htmlFor="invoiceNumber" className="text-xs">
                 Sr No:
@@ -1010,6 +1006,19 @@ export default function AWBForm({ isEdit = false, awb }) {
                   </PopoverContent>
                 </Popover>
               </div>
+              <div className="space-y-1">
+              <Label htmlFor="refCode" className="text-xs">
+                Reference Code
+              </Label>
+              <Input
+                id="refCode"
+                type="number"
+                placeholder="Reference Code"
+                value={refCode}
+                onChange={(e) => setRefCode(e.target.value)}
+                className="h-6 text-xs"
+              />
+            </div>
             {isEdit && (
               <>
                 <div className="space-y-1">
