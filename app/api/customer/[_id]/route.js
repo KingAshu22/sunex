@@ -70,7 +70,7 @@ export async function DELETE(req, { params }) {
     console.log("Deleting Customer");
     await connectToDB();
     const { _id } = await params; // Correctly extract params
-    const deleteCustomer = await Client.findOneAndDelete({ _id }); // Use a proper query object
+    const deleteCustomer = await Customer.findOneAndDelete({ _id }); // Use a proper query object
 
     if (!deleteCustomer) {
       return NextResponse.json({ error: "Customer not found" }, { status: 404 });

@@ -1014,6 +1014,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 id="refCode"
                 type="number"
                 placeholder="Reference Code"
+                required
                 value={refCode}
                 onChange={(e) => setRefCode(e.target.value)}
                 className="h-6 text-xs"

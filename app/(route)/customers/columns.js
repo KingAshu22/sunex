@@ -61,6 +61,19 @@ const ShowName = ({ id }) => {
 
 export const columns = [
   {
+    accessorKey: "code",
+    header: ({ column }) => (
+      <span
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="flex items-center gap-1"
+      >
+        Code
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </span>
+    ),
+  },
+  {
     accessorKey: "name",
     header: ({ column }) => (
       <span
