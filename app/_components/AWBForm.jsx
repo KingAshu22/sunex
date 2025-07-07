@@ -84,7 +84,7 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [trackingNumber, setTrackingNumber] = useState(awb?.trackingNumber || "")
   const [via, setVia] = useState(awb?.via || "Air Shipment")
   const [shipmentType, setShipmentType] = useState(awb?.shipmentType || "Non Document")
-  const [refCode, setRefCode] = useState(awb?.refCode || "");
+  const [refCode, setRefCode] = useState(awb?.refCode || localStorage.getItem("code") || "");
 
   //Forwarding Details
   const [forwardingNo, setForwardingNo] = useState(awb?.forwardingNo || "")

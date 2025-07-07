@@ -1,36 +1,73 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Edit, Save, X, Eye } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Plus, Eye } from "lucide-react"
+import { HotTable } from "@handsontable/react"
+import "handsontable/dist/handsontable.full.min.css"
 
 export default function RatesPage() {
   const [rates, setRates] = useState([])
+  const [selectedRateId, setSelectedRateId] = useState("")
   const [selectedRate, setSelectedRate] = useState(null)
-  const [editingCell, setEditingCell] = useState(null)
-  const [editValue, setEditValue] = useState("")
+  const [hotData, setHotData] = useState([])
+  const [zoneKeys, setZoneKeys] = useState([])
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isViewZonesOpen, setIsViewZonesOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [serviceSearch, setServiceSearch] = useState("")
+  const hotTableRef = useRef(null)
 
+  // Fetch rates on mount
   useEffect(() => {
     fetchRates()
   }, [])
 
+  // When selectedRateId or rates change, update selectedRate, zoneKeys, and hotData
+  useEffect(() => {
+    if (selectedRateId && rates.length > 0) {
+      // Always compare as string
+      const found = rates.find((r) => String(r._id?.$oid) === String(selectedRateId))
+      setSelectedRate(found)
+      if (found) {
+        // Get all unique zone keys (except "kg")
+        const keys = new Set()
+        found.rates.forEach((row) => {
+          Object.keys(row).forEach((k) => {
+            if (k !== "kg") keys.add(k)
+          })
+        })
+        const zoneArr = Array.from(keys)
+        setZoneKeys(zoneArr)
+        // Prepare data for Handsontable: [ [kg, zone1, zone2, ...], ... ]
+        const data = found.rates.map((row) => [
+          row.kg,
+          ...zoneArr.map((zone) => row[zone] ?? "")
+        ])
+        setHotData(data)
+      } else {
+        setZoneKeys([])
+        setHotData([])
+      }
+    } else {
+      setSelectedRate(null)
+      setZoneKeys([])
+      setHotData([])
+    }
+  }, [selectedRateId, rates])
+
   const fetchRates = async () => {
+    setLoading(true)
     try {
       const response = await fetch("/api/rates")
       const data = await response.json()
       setRates(data)
-      if (data.length > 0) {
-        setSelectedRate(data[0])
-      }
     } catch (error) {
       console.error("Error fetching rates:", error)
     } finally {
@@ -38,45 +75,41 @@ export default function RatesPage() {
     }
   }
 
-  const handleCellEdit = (rowIndex, zone) => {
-    setEditingCell(`${rowIndex}-${zone}`)
-    setEditValue(selectedRate.rates[rowIndex][zone] || "")
-  }
-
-  const handleCellSave = async (rowIndex, zone) => {
-    const updatedRates = [...selectedRate.rates]
-    updatedRates[rowIndex][zone] = Number.parseFloat(editValue) || 0
-
-    const updatedRate = { ...selectedRate, rates: updatedRates }
-    setSelectedRate(updatedRate)
-
-    // Save to database
+  // Save all changes
+  async function handleSaveAll() {
+    if (!selectedRate) return
+    // Convert hotData back to array of objects
+    const newRates = hotData.map((rowArr) => {
+      const obj = { kg: rowArr[0] }
+      zoneKeys.forEach((zone, i) => {
+        obj[zone] = rowArr[i + 1] === "" ? undefined : Number(rowArr[i + 1])
+      })
+      return obj
+    })
     try {
       await fetch(`/api/rates/${selectedRate._id.$oid}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedRate),
+        body: JSON.stringify({ ...selectedRate, rates: newRates }),
       })
+      await fetchRates()
+      alert("Rates saved!")
     } catch (error) {
-      console.error("Error saving rate:", error)
+      alert("Error saving rates")
     }
-
-    setEditingCell(null)
-    setEditValue("")
   }
 
-  const handleCellCancel = () => {
-    setEditingCell(null)
-    setEditValue("")
-  }
+  // Filtered rates for search
+  const filteredRates = useMemo(() => {
+    if (!serviceSearch.trim()) return rates
+    return rates.filter(
+      (rate) =>
+        rate.originalName.toLowerCase().includes(serviceSearch.toLowerCase()) ||
+        rate.service.toLowerCase().includes(serviceSearch.toLowerCase())
+    )
+  }, [serviceSearch, rates])
 
-  const getZoneNumbers = () => {
-    if (!selectedRate || !selectedRate.rates.length) return []
-    const firstRate = selectedRate.rates[0]
-    return Object.keys(firstRate)
-      .filter((key) => key !== "kg")
-      .sort((a, b) => Number.parseInt(a) - Number.parseInt(b))
-  }
+  // CreateRateModal and ZonesModal with robust key fixes
 
   const CreateRateModal = () => {
     const [newRate, setNewRate] = useState({
@@ -154,16 +187,16 @@ export default function RatesPage() {
           <DialogTitle>Zone Countries</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4">
-          {selectedRate?.zones.map((zone) => (
-            <Card key={zone.zone}>
+          {selectedRate?.zones.map((zone, idx) => (
+            <Card key={`zone-${String(zone.zone)}-${idx}`}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Zone {zone.zone}</CardTitle>
                 {zone.extraCharges && <Badge variant="secondary">Extra Charge: ${zone.extraCharges.Charge}</Badge>}
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {zone.countries.map((country) => (
-                    <Badge key={country} variant="outline">
+                  {zone.countries.map((country, cidx) => (
+                    <Badge key={`country-${String(zone.zone)}-${cidx}`} variant="outline">
                       {country}
                     </Badge>
                   ))}
@@ -204,116 +237,110 @@ export default function RatesPage() {
         </div>
       </div>
 
-      {rates.length === 0 ? (
+      {/* Service Search/Select */}
+      <Card>
+        <CardContent className="py-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <Label htmlFor="service-search" className="font-semibold">
+              Search or Select Service:
+            </Label>
+            <Input
+              id="service-search"
+              placeholder="Type to search service name..."
+              value={serviceSearch}
+              onChange={(e) => setServiceSearch(e.target.value)}
+              className="max-w-xs"
+            />
+            <Select
+              value={selectedRateId}
+              onValueChange={setSelectedRateId}
+            >
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Select a service" />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredRates.length === 0 && (
+                  <SelectItem value="" disabled>
+                    No services found
+                  </SelectItem>
+                )}
+                {filteredRates.map((rate, idx) => (
+                  <SelectItem key={`rate-${rate._id?.$oid || "noid"}-${idx}`} value={String(rate._id.$oid)}>
+                    {rate.originalName} - {rate.service}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Only show rates table if a service is selected */}
+      {!selectedRate ? (
         <Card>
           <CardContent className="flex items-center justify-center h-64">
             <div className="text-center">
-              <p className="text-lg text-muted-foreground mb-4">No rates found</p>
-              <Button onClick={() => setIsCreateModalOpen(true)}>Create Your First Rate</Button>
+              <p className="text-lg text-muted-foreground mb-4">
+                Please search and select a service to view and edit rates.
+              </p>
             </div>
           </CardContent>
         </Card>
       ) : (
-        <Tabs
-          value={selectedRate?._id.$oid}
-          onValueChange={(value) => {
-            const rate = rates.find((r) => r._id.$oid === value)
-            setSelectedRate(rate)
-          }}
-        >
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {rates.map((rate) => (
-              <TabsTrigger key={rate._id.$oid} value={rate._id.$oid} className="text-xs sm:text-sm">
-                {rate.originalName} - {rate.service}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          {rates.map((rate) => (
-            <TabsContent key={rate._id.$oid} value={rate._id.$oid}>
-              <Card>
-                <CardHeader>
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                      <CardTitle className="text-xl">
-                        {rate.originalName} - {rate.service}
-                      </CardTitle>
-                      <p className="text-muted-foreground">Type: {rate.type}</p>
-                    </div>
-                    <Badge variant="secondary">{rate.rates.length} weight tiers</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border border-gray-300">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="border border-gray-300 p-2 text-left font-semibold min-w-[80px]">
-                            Weight (kg)
-                          </th>
-                          {getZoneNumbers().map((zone) => (
-                            <th
-                              key={zone}
-                              className="border border-gray-300 p-2 text-center font-semibold min-w-[100px]"
-                            >
-                              Zone {zone}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rate.rates.map((rateRow, rowIndex) => (
-                          <tr key={rowIndex} className="hover:bg-gray-50">
-                            <td className="border border-gray-300 p-2 font-medium bg-gray-50">{rateRow.kg}</td>
-                            {getZoneNumbers().map((zone) => (
-                              <td key={zone} className="border border-gray-300 p-1">
-                                {editingCell === `${rowIndex}-${zone}` ? (
-                                  <div className="flex items-center gap-1">
-                                    <Input
-                                      value={editValue}
-                                      onChange={(e) => setEditValue(e.target.value)}
-                                      className="h-8 text-sm"
-                                      type="number"
-                                      autoFocus
-                                    />
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleCellSave(rowIndex, zone)}
-                                      className="h-8 w-8 p-0"
-                                    >
-                                      <Save className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={handleCellCancel}
-                                      className="h-8 w-8 p-0"
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <div
-                                    className="flex items-center justify-between group cursor-pointer p-1 rounded hover:bg-gray-100"
-                                    onClick={() => handleCellEdit(rowIndex, zone)}
-                                  >
-                                    <span className="text-sm">{rateRow[zone] || 0}</span>
-                                    <Edit className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                  </div>
-                                )}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle className="text-xl">
+                  {selectedRate.originalName} - {selectedRate.service}
+                </CardTitle>
+                <p className="text-muted-foreground">Type: {selectedRate.type}</p>
+              </div>
+              <Badge variant="secondary">{selectedRate.rates.length} weight tiers</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <HotTable
+                ref={hotTableRef}
+                key={selectedRateId || "no-rate"} // Remounts on service change
+                data={hotData}
+                colHeaders={["Weight (kg)", ...zoneKeys]}
+                rowHeaders={true}
+                width="100%"
+                height="auto"
+                stretchH="all"
+                manualColumnResize={true}
+                manualRowResize={true}
+                licenseKey="non-commercial-and-evaluation"
+                contextMenu={true}
+                copyPaste={true}
+                undo={true}
+                redo={true}
+                afterChange={(changes, source) => {
+                  if (changes && source !== "loadData") {
+                    setHotData((prev) => {
+                      const updated = prev.map((row) => [...row])
+                      changes.forEach(([rowIdx, colIdx, oldVal, newVal]) => {
+                        updated[rowIdx][colIdx] = newVal
+                      })
+                      return updated
+                    })
+                  }
+                }}
+                cells={(row, col) => {
+                  // Make all cells editable except the first column (kg)
+                  if (col === 0) {
+                    return { readOnly: true }
+                  }
+                }}
+              />
+              <div className="flex justify-end mt-4">
+                <Button onClick={handleSaveAll}>Save All Changes</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <CreateRateModal />

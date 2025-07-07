@@ -11,6 +11,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.796.0",
     "@aws-sdk/util-base64": "^3.310.0",
+    "@handsontable/react": "^15.3.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-alert-dialog": "^1.1.4",
     "@radix-ui/react-avatar": "^1.1.2",
@@ -33,6 +34,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "handsontable": "^15.3.0",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",
     "lucide-react": "^0.469.0",
@@ -43,6 +45,7 @@
     "react-advanced-cropper": "^0.20.1",
     "react-barcode": "^1.5.3",
     "react-cropper-custom": "^1.2.7",
+    "react-data-grid": "^7.0.0-beta.56",
     "react-day-picker": "^9.5.0",
     "react-dom": "^18.3.1",
     "react-dropzone": "^14.3.8",

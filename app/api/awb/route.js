@@ -17,7 +17,7 @@ export async function GET(req) {
       // If the user is a client, filter AWBs by staffId
       query = { staffId: userId };
     } else if (userType === "franchise") {
-      query = { staffId: userId };
+      query = { refCode: userId };
     }
 
     // Fetch AWBs based on the query
