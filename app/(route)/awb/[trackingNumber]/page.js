@@ -214,7 +214,7 @@ export default function AWBView({ params }) {
               {/* <InfoItem
                 label="Amount"
                 value={
-                  "₹ 600" // Assuming a fixed amount for demonstration
+                  "₹550 x 8.5 = ₹4675" // Assuming a fixed amount for demonstration
                 }
               /> */}
               <InfoItem

@@ -116,7 +116,9 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [receiverContact, setReceiverContact] = useState(awb?.receiver?.contact || "")
 
   // Box details
-  const [boxes, setBoxes] = useState(awb?.boxes || [])
+  const [boxes, setBoxes] = useState(awb?.boxes || []);
+  const [ourBoxes, setOurBoxes] = useState(awb?.ourBoxes || []);
+  const [vendorBoxes, setVendorBoxes] = useState(awb?.vendorBoxes || []);
 
   // Derived state
   const [totalChargeableWeight, setTotalChargeableWeight] = useState("")

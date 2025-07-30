@@ -17,6 +17,8 @@ const AwbSchema = new Schema({
   billTo: UserSchema,
   zone: String,
   boxes: Array,
+  ourBoxes: Array,
+  vendorBoxes: Array,
   parcelStatus: [
     {
       status: String,

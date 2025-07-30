@@ -7,8 +7,10 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Printer } from "lucide-react"
-import { Countries} from "@/app/constants/country"
+import { Printer, FileDown } from "lucide-react"
+import { Countries } from "@/app/constants/country"
+import * as XLSX from "xlsx"
+import { saveAs } from "file-saver"
 
 export default function RateCalculator() {
   const [services, setServices] = useState([])
@@ -21,12 +23,11 @@ export default function RateCalculator() {
     profitPercent: 0,
     includeGST: false,
   })
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(null)
 
   useEffect(() => {
-    // Fetch available services on component mount
     fetchServices()
-    }, [])
+  }, [])
 
   const fetchServices = async () => {
     try {
@@ -40,17 +41,11 @@ export default function RateCalculator() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setFormData({
-      ...formData,
-      [name]: value,
-    })
+    setFormData({ ...formData, [name]: value })
   }
 
   const handleCountryChange = (value) => {
-    setFormData({
-      ...formData,
-      country: value,
-    })
+    setFormData({ ...formData, country: value })
   }
 
   const handleServiceToggle = (service) => {
@@ -58,40 +53,27 @@ export default function RateCalculator() {
       const selectedServices = prev.selectedServices.includes(service)
         ? prev.selectedServices.filter((s) => s !== service)
         : [...prev.selectedServices, service]
-
-      return {
-        ...prev,
-        selectedServices,
-      }
+      return { ...prev, selectedServices }
     })
   }
 
   const handleGSTToggle = (checked) => {
-    setFormData({
-      ...formData,
-      includeGST: checked,
-    })
+    setFormData({ ...formData, includeGST: checked })
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
     if (!formData.country || formData.selectedServices.length === 0) {
       alert("Please select a country and at least one service")
       return
     }
-
     setLoading(true)
-
     try {
       const response = await fetch("/api/rate-range", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       })
-
       const data = await response.json()
       setResults(data)
     } catch (error) {
@@ -104,7 +86,6 @@ export default function RateCalculator() {
 
   const handlePrint = () => {
     const printWindow = window.open("", "_blank")
-
     printWindow.document.write(`
       <html>
         <head>
@@ -163,11 +144,6 @@ export default function RateCalculator() {
               font-size: 12px;
               text-align: center;
             }
-            @media print {
-              body {
-                padding: 0;
-              }
-            }
           </style>
         </head>
         <body>
@@ -176,15 +152,9 @@ export default function RateCalculator() {
             <div class="tagline">International & Domestic Courier & Cargo Services</div>
             <div class="contact">Mob No: +91 70213 35122</div>
           </div>
-          
-          <div class="title">Rate for ${results?.countryName || ""}</div>
-          
-          <div class="gst-note">
-            ${formData.includeGST ? "Rates are inclusive of 18% GST" : "18% GST will be charged extra"}
-            <br>
-            All rates are per kg
-          </div>
-          
+
+          <div class="title">Rate/kg for ${results?.countryName || ""} as of ${new Date().toLocaleDateString()} (${formData.includeGST ? "Including 18% GST" : "18% GST Extra"})</div>
+
           <table>
             <thead>
               <tr>
@@ -193,34 +163,44 @@ export default function RateCalculator() {
               </tr>
             </thead>
             <tbody>
-              ${results?.rows
-                .map(
-                  (row) => `
+              ${results?.rows.map((row) => `
                 <tr>
                   <td>${row.weight}</td>
                   ${row.rates.map((rate) => `<td>${rate || "-"}</td>`).join("")}
                 </tr>
-              `,
-                )
-                .join("")}
+              `).join("")}
             </tbody>
           </table>
-          
+
           <div class="footer">
             <p>Thank you for choosing SunEx Services Pvt Ltd</p>
-            <p>This rate sheet is as of  ${new Date().toLocaleDateString()}</p>
           </div>
         </body>
       </html>
     `)
-
     printWindow.document.close()
     printWindow.focus()
-
-    // Add a small delay to ensure content is loaded before printing
     setTimeout(() => {
       printWindow.print()
     }, 500)
+  }
+
+  const handleExportExcel = () => {
+    if (!results) return
+
+    const wsData = [
+      ["Weight (kg)", ...results.headers],
+      ...results.rows.map((row) => [row.weight, ...row.rates]),
+    ]
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Rate Sheet")
+
+    const fileName = `Rate Sheet - ${results.countryName} (${new Date().toLocaleDateString()}).xlsx`
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" })
+    const blob = new Blob([excelBuffer], { type: "application/octet-stream" })
+    saveAs(blob, fileName)
   }
 
   return (
@@ -235,7 +215,7 @@ export default function RateCalculator() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="country">Select Country</Label>
+                <Label>Select Country</Label>
                 <Select onValueChange={handleCountryChange} value={formData.country}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a country" />
@@ -251,9 +231,8 @@ export default function RateCalculator() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="profitPercent">Profit Percentage</Label>
+                <Label>Profit Percentage</Label>
                 <Input
-                  id="profitPercent"
                   name="profitPercent"
                   type="number"
                   min="0"
@@ -264,9 +243,8 @@ export default function RateCalculator() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="startWeight">Start Weight (kg)</Label>
+                <Label>Start Weight (kg)</Label>
                 <Input
-                  id="startWeight"
                   name="startWeight"
                   type="number"
                   min="0.5"
@@ -277,9 +255,8 @@ export default function RateCalculator() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="endWeight">End Weight (kg)</Label>
+                <Label>End Weight (kg)</Label>
                 <Input
-                  id="endWeight"
                   name="endWeight"
                   type="number"
                   min="0.5"
@@ -322,27 +299,28 @@ export default function RateCalculator() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Rate Sheet</CardTitle>
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Printer className="h-4 w-4 mr-2" />
+                Print
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportExcel}>
+                <FileDown className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold">SunEx Services Pvt Ltd</h2>
               <p className="text-sm italic">International & Domestic Courier & Cargo Services</p>
-              <p className="text-xs mt-1">
-                Mob No: +91 70213 35122
-              </p>
+              <p className="text-xs mt-1">Mob No: +91 70213 35122</p>
             </div>
 
-            <h3 className="text-lg font-semibold text-center mb-4">Rate for {results.countryName}</h3>
-
-            <p className="text-sm italic mb-4">
-              {formData.includeGST ? "Rates are inclusive of 18% GST" : "18% GST will be charged extra"}
-              <br />
-              All rates are per kg
-            </p>
+            <h3 className="text-lg font-semibold text-center mb-4">
+              Rate for {results.countryName} as of {new Date().toLocaleDateString()} (
+              {formData.includeGST ? "Including 18% GST" : "18% GST Extra"})
+            </h3>
 
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">

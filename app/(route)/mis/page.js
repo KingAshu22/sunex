@@ -1106,7 +1106,10 @@ export default function AllAWBsMISPage() {
                         </Button>
                       </TableHead>
                       <TableHead>Box</TableHead>
-                      <TableHead>Wt (kg)</TableHead>
+                      <TableHead>Dimensions</TableHead>
+                      <TableHead className="whitespace-nowrap">Act Wt</TableHead>
+                      <TableHead className="whitespace-nowrap">Dim Wt</TableHead>
+                      <TableHead className="whitespace-nowrap">Chrg Wt</TableHead>
                       <TableHead>
                         <Button
                           variant="ghost"
@@ -1170,7 +1173,22 @@ export default function AllAWBsMISPage() {
                           </TableCell>
                           <TableCell className="text-center font-medium">
                             {row.box
+                              ? `${row.box.length || 0}x${row.box.breadth || 0}x${row.box.height || 0}`
+                              : totalWeight.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-center font-medium">
+                            {row.box
                               ? (Number.parseFloat(row.box.actualWeight?.toString()) || 0).toFixed(2)
+                              : totalWeight.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-center font-medium">
+                            {row.box
+                              ? (Number.parseFloat(row.box.dimensionalWeight?.toString()) || 0).toFixed(2)
+                              : totalWeight.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-center font-medium">
+                            {row.box
+                              ? (Number.parseFloat(row.box.chargeableWeight?.toString()) || 0).toFixed(2)
                               : totalWeight.toFixed(2)}
                           </TableCell>
 
