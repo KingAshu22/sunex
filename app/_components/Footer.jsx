@@ -6,7 +6,7 @@ export default function Footer() {
           <div>
             <h3 className="text-xl font-bold mb-4">About Us</h3>
             <p className="text-gray-300">
-              Sun Express Services is a trusted provider of reliable and
+              SunEx Services is a trusted provider of reliable and
               cost-effective cross-border shipping solutions for businesses and
               individuals. We specialize in delivering parcels and cargo quickly
               and securely, ensuring your shipments reach their destination on
@@ -57,7 +57,7 @@ export default function Footer() {
               className="text-[#F44336]"
               href="https://ashish-prasad.netlify.app"
             >
-              Ashish Sanjay Prasad
+              M Kumars Tech Pvt Ltd
             </a>
           </p>
         </div>

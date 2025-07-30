@@ -156,7 +156,7 @@ export default function SignInForm() {
         <div className="flex justify-center">
           <Image
             src={"/Sun.jpg"}
-            alt="Sun Express Services"
+            alt="SunEx Services"
             width={200}
             height={60}
             className=""

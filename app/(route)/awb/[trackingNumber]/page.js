@@ -135,7 +135,7 @@ export default function AWBView({ params }) {
             <div>
               <Image
                 src="/Sun.jpg"
-                alt="Sun Express Services"
+                alt="SunEx Services"
                 width={200}
                 height={60}
                 className=""
@@ -244,7 +244,7 @@ export default function AWBView({ params }) {
               lower.
             </li>
             <li>
-              Sun Express Services will not be responsible for delayed delivery
+              SunEx Services will not be responsible for delayed delivery
               due to fire, accidents, riots, strikes, and natural calamities,
               flight delay, offloading of cargo, airlines space problem,
               airlines bagging mis-routing, customs process delay, lockdown,
@@ -262,7 +262,7 @@ export default function AWBView({ params }) {
               the consignment.
             </li>
             <li>
-              The consignments handed over to Sun Express Services do not
+              The consignments handed over to SunEx Services do not
               violate the rules and regulations of the Post & Telegraph
               Department and IATA under the Geneva Convention.
             </li>
@@ -271,7 +271,7 @@ export default function AWBView({ params }) {
               economy services.
             </li>
             <li>
-              Sun Express Services is not responsible for any duties/penalties
+              SunEx Services is not responsible for any duties/penalties
               or charges applied to any shipment by any government authorities
               of the destination country.
             </li>

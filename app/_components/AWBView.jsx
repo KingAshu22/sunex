@@ -26,7 +26,7 @@ export default function AWBViewClient({ awbData }) {
             <div>
               <Image
                 src="/placeholder.svg?height=60&width=200"
-                alt="Sun Express Services"
+                alt="SunEx Services"
                 width={200}
                 height={60}
               />
