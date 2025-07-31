@@ -16,7 +16,11 @@ export default function RootLayout({ children }) {
     (pathname.includes("/awb/") && !pathname.includes("/awb/create")) ||
     pathname.includes("/signin") ||
     pathname == "/" ||
-    pathname.includes("/track");
+    pathname.includes("/track") || pathname.includes("/about") ||
+    pathname.includes("/contact") || pathname.includes("/privacy-policy") ||
+    pathname.includes("/terms-and-conditions") ||
+    pathname.includes("/refunds-cancellation-policy") ||
+    pathname.includes("/merchant-agreement");
 
   return (
     <html lang="en">

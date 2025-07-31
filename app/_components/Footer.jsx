@@ -2,7 +2,7 @@ export default function Footer() {
   return (
     <footer className="bg-[#232C65] text-white">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
           <div>
             <h3 className="text-xl font-bold mb-4">About Us</h3>
             <p className="text-gray-300">
@@ -22,6 +22,14 @@ export default function Footer() {
               <li>Express Delivery</li>
               <li>Cargo Services</li>
               <li>Business Solutions</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-xl font-bold mb-4">Quick Links</h3>
+            <ul className="space-y-2">
+              <li><a href="/terms-and-conditions">Terms & Conditions</a></li>
+              <li><a href="/privacy-policy">Privacy Policy</a></li>
+              <li><a href="/merchant-agreement">Merchant Agreement</a></li>
             </ul>
           </div>
           <div>

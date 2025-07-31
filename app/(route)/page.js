@@ -14,6 +14,7 @@ import Partners from "../_components/Partners";
 import Services from "../_components/Services";
 import WhatWeOffer from "../_components/WhatWeOffer";
 import FAQ from "../_components/Faq";
+import ServiceProviders from "../_components/ServiceProviders";
 
 export default function Home() {
   return (
@@ -22,6 +23,7 @@ export default function Home() {
       <Hero />
       <Partners />
       <Features />
+      <ServiceProviders />
       <GlobalStage />
       <Services />
       {/* <GetQuote /> */}

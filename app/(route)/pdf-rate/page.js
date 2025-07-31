@@ -318,7 +318,7 @@ export default function RateCalculator() {
             </div>
 
             <h3 className="text-lg font-semibold text-center mb-4">
-              Rate for {results.countryName} as of {new Date().toLocaleDateString()} (
+              Rate/kg for {results.countryName} as of {new Date().toLocaleDateString()} (
               {formData.includeGST ? "Including 18% GST" : "18% GST Extra"})
             </h3>
 
