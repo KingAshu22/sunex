@@ -55,7 +55,7 @@ export default function Footer() {
             reserved | Created by{" "}
             <a
               className="text-[#F44336]"
-              href="https://ashish-prasad.netlify.app"
+              href="/"
             >
               M Kumars Tech Pvt Ltd
             </a>

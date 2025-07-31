@@ -25,7 +25,7 @@ const features = [
     title: "Seamless eCommerce Logistics",
     desc: (
       <>
-        Let us handle your shipping needs with easy marketplace integration, no hidden charges, and affordable rates starting at just ₹59.<br /><br />
+        Let us handle your shipping needs with easy marketplace integration, no hidden charges, and affordable rates.<br /><br />
         Ship any quantity—big or small—and expand your eCommerce reach without the wait or the worry.<br /><br />
         Take your business global, the smart way.
       </>

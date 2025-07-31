@@ -10,12 +10,9 @@ export default function FrontHeader() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20">
           <Link href="/" className="flex items-center">
-            <Image
-              src="/Sun.jpg"
-              alt="Sun Express Logo"
-              width={180}
-              height={40}
-            />
+            <h1 className="text-xl font-bold text-[#F44336]">
+              SunEx Services
+            </h1>
           </Link>
 
           <nav className="hidden lg:flex items-center space-x-8 font-bold">
