@@ -102,11 +102,10 @@ export default function About() {
       </section>
 
       {/* Team Section */}
-      <section className="py-12 px-4">
+      {/* <section className="py-12 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-[#232C65] mb-8">Meet Our Team</h2>
           <div className="flex flex-wrap justify-center gap-8">
-            {/* Replace with your real team! */}
             <div className="flex flex-col items-center">
               <Image src="/team/user1.jpg" alt="Team Member" width={96} height={96} className="rounded-full mb-2 border-4 border-yellow-400 object-cover" />
               <span className="font-semibold text-[#232C65]">Amit Sharma</span>
@@ -124,7 +123,7 @@ export default function About() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Call to Action */}
       <section className="py-12 px-4 bg-gradient-to-r from-[#2563eb]/10 to-[#f8f9ff]">

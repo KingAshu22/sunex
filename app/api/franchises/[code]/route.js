@@ -3,20 +3,23 @@ import Franchise from "@/models/Franchise"
 import { NextResponse } from "next/server"
 
 export async function GET(req, { params }) {
-  const { code } = await params
-  console.log("Inside get /api/franchises/:code")
-  await connectToDB()
-  try {
-    const franchise = await Franchise.find({ code: code })
+  const { code } = await params;
+  console.log("Inside get /api/franchises/:code");
 
+  await connectToDB();
+
+  try {
+    // Match case-insensitively to be safe
+    const franchise = await Franchise.findOne({ code: { $regex: new RegExp(`^${code}$`, 'i') } });
+    
     if (!franchise) {
-      return NextResponse.json({ message: "Franchise not found" }, { status: 404 })
+      return NextResponse.json({ message: "Franchise not found" }, { status: 404 });
     }
 
-    return NextResponse.json(franchise)
+    return NextResponse.json(franchise); // Return direct object, not array
   } catch (error) {
-    console.error("Error fetching Franchise data:", error)
-    return NextResponse.json({ message: "Failed to fetch Franchise data.", error: error.message }, { status: 500 })
+    console.error("Error fetching Franchise data:", error);
+    return NextResponse.json({ message: "Failed to fetch Franchise data.", error: error.message }, { status: 500 });
   }
 }
 

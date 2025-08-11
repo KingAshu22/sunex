@@ -45,6 +45,7 @@ export async function POST(req) {
     await Customer.findOneAndUpdate(
       {
         name: data.sender.name,
+        owner: data.staffId
       },
       {
         $set: {
@@ -53,9 +54,11 @@ export async function POST(req) {
           address: data.sender.address,
           country: data.sender.country,
           zip: data.sender.zip,
+          contact: data.sender.contact,
           kyc: data.sender.kyc,
           gst: data.sender.gst,
           role: "customer",
+          owner: data.staffId,
         },
       },
       { upsert: true, new: true }
@@ -65,6 +68,7 @@ export async function POST(req) {
     await Customer.findOneAndUpdate(
       {
         name: data.receiver.name,
+        owner: data.staffId
       },
       {
         $set: {
@@ -73,7 +77,11 @@ export async function POST(req) {
           address: data.receiver.address,
           country: data.receiver.country,
           zip: data.receiver.zip,
+          contact: data.receiver.contact,
+          kyc: data.receiver.kyc,
+          gst: data.receiver.gst,
           role: "customer",
+          owner: data.staffId,
         },
       },
       { upsert: true, new: true }

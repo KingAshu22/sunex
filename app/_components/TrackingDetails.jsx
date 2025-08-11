@@ -79,16 +79,16 @@ export default function TrackingDetails({ parcelDetails }) {
               {parcelDetails.parcelType}
             </p>
           </div>
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <p className="font-semibold text-gray-600">Invoice Number:</p>
             <p className="text-lg font-medium text-indigo-700">
               {parcelDetails.invoiceNumber}
             </p>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
 
-      <Card className="mb-8 bg-white shadow-lg">
+      {/* <Card className="mb-8 bg-white shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-indigo-700">
             Sender Details
@@ -136,7 +136,7 @@ export default function TrackingDetails({ parcelDetails }) {
             </p>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       <Card className="bg-white shadow-lg">
         <CardHeader>

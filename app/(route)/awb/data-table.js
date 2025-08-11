@@ -60,8 +60,8 @@ export function DataTable({ columns, data }) {
     <div className="w-full">
       <div className="flex items-center flex-wrap gap-2 py-1">
         <Input
-          placeholder="Filter by Invoice No..."
-          value={table.getColumn("invoiceNumber")?.getFilterValue() ?? ""}
+          placeholder="Filter by AWB No..."
+          value={table.getColumn("trackingNumber")?.getFilterValue() ?? ""}
           onChange={(event) =>
             table.getColumn("invoiceNumber")?.setFilterValue(event.target.value)
           }

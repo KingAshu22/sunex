@@ -185,43 +185,84 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    const fetchFranchiseData = async () => {
-      setLoading(true)
-      const userType = localStorage.getItem("userType")
-      const code = localStorage.getItem("code")
+    const fetchProfitPercentForUser = async () => {
+      if (!receiverCountry) return;
 
-      if (userType !== "admin") {
-        try {
-          const response = await axios.get(`/api/franchises/${code}`)
-          const franchise = response.data[0] // since you use `find`, response is an array
-          const rates = franchise.rates
+      setLoading(true);
+      setError("");
 
-          // Find rate for specific receiverCountry
-          const matchedRate = rates.find((rate) => rate.country === receiverCountry)
+      try {
+        const ut = localStorage.getItem("userType") || "";
+        const code = localStorage.getItem("code") || "";
+        const normCountry = receiverCountry.trim().toLowerCase();
 
-          let percent
-          if (matchedRate) {
-            percent = matchedRate.percent
-          } else {
-            const restOfWorldRate = rates.find((rate) => rate.country === "Rest of World")
-            percent = restOfWorldRate ? restOfWorldRate.percent : 0
+        if (ut === "admin") {
+          // Admin enters profit manually - do nothing here
+          setLoading(false);
+          return;
+        }
+
+        /** ───── Franchise user ───── */
+        if (ut === "franchise") {
+          const resp = await axios.get(`/api/franchises/${code}`);
+          const franchise = Array.isArray(resp.data) ? resp.data[0] : resp.data;
+          const fRates = franchise?.rates || [];
+
+          const fMatch = fRates.find(r => r.country.trim().toLowerCase() === normCountry);
+          const fRest = fRates.find(r => r.country.trim().toLowerCase() === "rest of world");
+
+          const percent = Number(fMatch?.percent ?? fRest?.percent ?? 0);
+          setProfitPercent(percent);
+          setLoading(false);
+          return;
+        }
+
+        /** ───── Client user ───── */
+        if (ut === "client") {
+          // 1. Client doc
+          const clientRes = await axios.get(`/api/clients/${code}`);
+          const client = Array.isArray(clientRes.data) ? clientRes.data[0] : clientRes.data;
+
+          const clientRates = client?.rates || [];
+          const cMatch = clientRates.find(r => r.country.trim().toLowerCase() === normCountry);
+          const cRest = clientRates.find(r => r.country.trim().toLowerCase() === "rest of world");
+
+          const clientPercent = Number(cMatch?.profitPercent ?? cRest?.profitPercent ?? 0);
+
+          // 2. Franchise doc from client's owner
+          let franchisePercent = 0;
+          if (client?.owner) {
+            const fRes = await axios.get(`/api/franchises/${client.owner}`);
+            const franchise = Array.isArray(fRes.data) ? fRes.data[0] : fRes.data;
+            const fRates = franchise?.rates || [];
+
+            const fMatch = fRates.find(r => r.country.trim().toLowerCase() === normCountry);
+            const fRest = fRates.find(r => r.country.trim().toLowerCase() === "rest of world");
+
+            // Franchise rates use `percent` field
+            franchisePercent = Number(fMatch?.percent ?? fRest?.percent ?? 0);
           }
 
-          setProfitPercent(percent)
+          const total = clientPercent + franchisePercent;
 
-          setLoading(false)
-        } catch (err) {
-          console.error(err)
-          setError("Failed to fetch Franchise data")
-          setLoading(false)
+          console.log("Client Profit Percent:", clientPercent);
+          console.log("Franchise Profit Percent:", franchisePercent);
+          console.log("Total Profit Percent:", total);
+
+          setProfitPercent(total);
+          setLoading(false);
+          return;
         }
-      }
-    }
 
-    if (receiverCountry) {
-      fetchFranchiseData()
-    }
-  }, [receiverCountry])
+      } catch (err) {
+        console.error("Error fetching profit percent for AWB:", err);
+        setError("Failed to fetch profit percent data");
+        setLoading(false);
+      }
+    };
+
+    fetchProfitPercentForUser();
+  }, [receiverCountry]);
 
   // Fetch customers on component mount
   useEffect(() => {
@@ -725,14 +766,14 @@ export default function AWBForm({ isEdit = false, awb }) {
         ...(isEdit
           ? {}
           : {
-              parcelStatus: [
-                {
-                  status: "Shipment AWB Prepared - BOM HUB",
-                  timestamp: new Date(),
-                  comment: "",
-                },
-              ],
-            }),
+            parcelStatus: [
+              {
+                status: "Shipment AWB Prepared - BOM HUB",
+                timestamp: new Date(),
+                comment: "",
+              },
+            ],
+          }),
         // Add selected rate information if available
         ...(selectedRate && {
           rateInfo: {
@@ -962,53 +1003,53 @@ export default function AWBForm({ isEdit = false, awb }) {
               </Select>
             </div>
             <div className="space-y-1">
-                <Label htmlFor="receiverCountry" className="text-xs">
-                  Country*
-                </Label>
-                <Popover open={receiverCountryOpen} onOpenChange={setReceiverCountryOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={receiverCountryOpen}
-                      className="w-full justify-between h-8 text-xs"
-                    >
-                      {receiverCountry || "Select country..."}
-                      <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0">
-                    <Command>
-                      <CommandInput placeholder="Search country..." className="text-xs" />
-                      <CommandList>
-                        <CommandEmpty className="text-xs">No country found.</CommandEmpty>
-                        <CommandGroup>
-                          {Countries.map((country) => (
-                            <CommandItem
-                              key={country}
-                              value={country}
-                              onSelect={(currentValue) => {
-                                setReceiverCountry(currentValue === receiverCountry ? "" : currentValue)
-                                setReceiverCountryOpen(false)
-                              }}
-                              className="text-xs"
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-3 w-3",
-                                  receiverCountry === country ? "opacity-100" : "opacity-0",
-                                )}
-                              />
-                              {country}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-1">
+              <Label htmlFor="receiverCountry" className="text-xs">
+                Country*
+              </Label>
+              <Popover open={receiverCountryOpen} onOpenChange={setReceiverCountryOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={receiverCountryOpen}
+                    className="w-full justify-between h-8 text-xs"
+                  >
+                    {receiverCountry || "Select country..."}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Search country..." className="text-xs" />
+                    <CommandList>
+                      <CommandEmpty className="text-xs">No country found.</CommandEmpty>
+                      <CommandGroup>
+                        {Countries.map((country) => (
+                          <CommandItem
+                            key={country}
+                            value={country}
+                            onSelect={(currentValue) => {
+                              setReceiverCountry(currentValue === receiverCountry ? "" : currentValue)
+                              setReceiverCountryOpen(false)
+                            }}
+                            className="text-xs"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-3 w-3",
+                                receiverCountry === country ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                            {country}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1">
               <Label htmlFor="refCode" className="text-xs">
                 Reference Code
               </Label>
@@ -1647,22 +1688,22 @@ export default function AWBForm({ isEdit = false, awb }) {
                 <Label htmlFor="createShippingInvoice" className="font-medium text-xs">
                   Create Shipping Invoice?
                 </Label>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Currency</Label>
-                      <Select value={shippingCurrency} onValueChange={setShippingCurrency}>
-                        <SelectTrigger className="h-6 text-xs">
-                          <SelectValue placeholder="Currency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="₹">₹</SelectItem>
-                          <SelectItem value="$">$</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                      <div className="text-xs font-medium bg-[#4DA8DA] text-white rounded-lg p-1">
-            Total Shipping Value: {shippingCurrency}{" "}
-            {totalShippingValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-          </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Currency</Label>
+                  <Select value={shippingCurrency} onValueChange={setShippingCurrency}>
+                    <SelectTrigger className="h-6 text-xs">
+                      <SelectValue placeholder="Currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="₹">₹</SelectItem>
+                      <SelectItem value="$">$</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-xs font-medium bg-[#4DA8DA] text-white rounded-lg p-1">
+                  Total Shipping Value: {shippingCurrency}{" "}
+                  {totalShippingValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                </div>
               </div>
 
               {showItemDetails && (
@@ -1775,17 +1816,17 @@ export default function AWBForm({ isEdit = false, awb }) {
                                     </div>
                                   </div>
                                   {itemIndex > 0 && (
-                                  <Button
-                                    type="button"
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => removeItem(boxIndex, itemIndex)}
-                                    className="h-5 text-xs px-1 mt-1 r-0"
-                                  >
-                                    <Minus className="h-3 w-3 col-span-2" />
-                                    Remove
-                                  </Button>
-                                )}
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => removeItem(boxIndex, itemIndex)}
+                                      className="h-5 text-xs px-1 mt-1 r-0"
+                                    >
+                                      <Minus className="h-3 w-3 col-span-2" />
+                                      Remove
+                                    </Button>
+                                  )}
                                 </div>
                               </CardContent>
                             </div>

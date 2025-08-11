@@ -49,7 +49,7 @@ export function AppSidebar() {
       icon: Contact,
     },
     // Add Clients menu item conditionally
-    ...(userType === "admin"
+    ...(userType === "admin" || userType === "branch"
       ? [
         {
           title: "Clients",
@@ -59,6 +59,15 @@ export function AppSidebar() {
         {
           title: "Franchise",
           url: "/franchise",
+          icon: User,
+        },
+      ]
+      : []),
+      ...(userType === "franchise"
+      ? [
+        {
+          title: "Clients",
+          url: "/clients",
           icon: User,
         },
       ]

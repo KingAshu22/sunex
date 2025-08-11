@@ -6,6 +6,7 @@ import {
     Pencil,
     Plane,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export const clientColumns = [
     {
@@ -23,19 +24,6 @@ export const clientColumns = [
         },
     },
     {
-        accessorKey: "invoiceNumber",
-        header: ({ column }) => (
-            <span
-                variant="ghost"
-                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                className="flex items-center gap-1"
-            >
-                Invoice No.
-                <ArrowUpDown className="ml-2 h-4 w-4" />
-            </span>
-        ),
-    },
-    {
         accessorKey: "trackingNumber",
         header: ({ column }) => (
             <span
@@ -43,7 +31,7 @@ export const clientColumns = [
                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 className="flex items-center gap-1"
             >
-                Tracking No.
+                AWB No.
                 <ArrowUpDown className="ml-2 h-4 w-4" />
             </span>
         ),
@@ -91,6 +79,7 @@ export const clientColumns = [
         id: "actions",
         header: "Actions",
         cell: ({ row }) => {
+            const router = useRouter();
             const { trackingNumber } = row.original;
             return (
                 <div className="flex flex-rows gap-2">
@@ -101,20 +90,11 @@ export const clientColumns = [
                         <Eye className="w-[20px] h-[20px]" />
                     </Button>
                     <Button
-                        className="px-2 py-1 bg-blue-800"
-                        onClick={() => window.open(`/edit-awb/${trackingNumber}`)}
-                    >
-                        <Pencil className="w-[20px] h-[20px]" />
-                    </Button>
-                    <Button
-                        onClick={() => window.open(`/shipping-invoice/${trackingNumber}`)}
+                        className="bg-blue-400"
+                        onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}
                     >
                         <Plane className="w-5 h-5" />
-                    </Button>
-                    <Button
-                      onClick={() => window.open(`/label/${trackingNumber}`)}
-                    >
-                      <Barcode className="w-5 h-5" />
+                        <Barcode className="w-5 h-5" />
                     </Button>
                 </div>
             );

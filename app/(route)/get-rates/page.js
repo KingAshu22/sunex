@@ -1,70 +1,121 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
-import { Countries } from '@/app/constants/country';
-import axios from 'axios';
+import { useState, useEffect } from 'react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Loader2 } from 'lucide-react'
+import { Countries } from '@/app/constants/country'
+import axios from 'axios'
 
-const availableTypes = ['dhl', 'fedex', 'ups', 'dtdc', 'aramex', 'orbit'];
+const availableTypes = ['dhl', 'fedex', 'ups', 'dtdc', 'aramex', 'orbit']
 
 export default function GetRatesPage() {
-  const [weight, setWeight] = useState('');
-  const [country, setCountry] = useState('');
-  const [showProfit, setShowProfit] = useState(true);
-  const [profitPercent, setProfitPercent] = useState('0');
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [weight, setWeight] = useState('')
+  const [country, setCountry] = useState('')
+  const [showProfit, setShowProfit] = useState(true)
+  const [profitPercent, setProfitPercent] = useState('0')
+  const [results, setResults] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [userType, setUserType] = useState('')
+  const [code, setCode] = useState('')
 
   useEffect(() => {
-    const userType = localStorage.getItem("userType");
-    userType !== "admin" && setShowProfit(false);
-  }, []);
+    const ut = localStorage.getItem('userType') || ''
+    const c = localStorage.getItem('code') || ''
+    setUserType(ut)
+    setCode(c)
+    if (ut !== 'admin') setShowProfit(false)
+  }, [])
 
   useEffect(() => {
-    const fetchFranchiseProfit = async () => {
-      const userType = localStorage.getItem("userType");
-      const code = localStorage.getItem("code");
+    const fetchProfitPercent = async () => {
+      if (!country) return
 
-      if (userType !== "admin" && country) {
-        try {
-          setLoading(true);
-          const response = await axios.get(`/api/franchises/${code}`);
-          const franchise = response.data[0];
-          const rates = franchise.rates || [];
+      try {
+        setLoading(true)
+        setError('')
+        const normCountry = country.trim().toLowerCase()
 
-          const matchedRate = rates.find(rate => rate.country === country);
-          const defaultRate = rates.find(rate => rate.country === "Rest of World");
-
-          const percent = matchedRate ? matchedRate.percent : (defaultRate ? defaultRate.percent : 0);
-          setShowProfit(false);
-          setProfitPercent(percent.toString());
-        } catch (err) {
-          console.error(err);
-          setError("Failed to fetch franchise data.");
-        } finally {
-          setLoading(false);
+        if (userType === 'admin') {
+          setShowProfit(true)
+          return
         }
-      }
-    };
 
-    fetchFranchiseProfit();
-  }, [country]);
+        // Franchise logic
+        if (userType === 'franchise') {
+          const franchiseRes = await axios.get(`/api/franchises/${code}`)
+          const franchise = Array.isArray(franchiseRes.data) ? franchiseRes.data[0] : franchiseRes.data
+          const fRates = Array.isArray(franchise) ? franchise : (franchise?.rates || [])
+
+          const match = fRates.find(r => r.country?.trim().toLowerCase() === normCountry)
+          const rest = fRates.find(r => r.country?.trim().toLowerCase() === 'rest of world')
+
+          // Franchise rates use `percent`
+          const percent = Number(match?.percent ?? rest?.percent ?? 0)
+          setProfitPercent(percent.toString())
+          return
+        }
+
+        // Client logic: sum client's own profitPercent + franchise's percent
+        if (userType === 'client') {
+          // 1. Fetch client doc
+          const clientRes = await axios.get(`/api/clients/${code}`)
+          const client = Array.isArray(clientRes.data) ? clientRes.data[0] : clientRes.data
+          const clientRates = client?.rates || []
+
+          const clientMatch = clientRates.find(r => r.country?.trim().toLowerCase() === normCountry)
+          const clientRest = clientRates.find(r => r.country?.trim().toLowerCase() === 'rest of world')
+
+          // Client rates use `profitPercent`
+          const clientP = Number(clientMatch?.profitPercent ?? clientRest?.profitPercent ?? 0)
+
+          // 2. Fetch franchise by client.owner
+          const franchiseCode = client?.owner
+          let franchiseP = 0
+
+          if (franchiseCode) {
+            const franchiseRes = await axios.get(`/api/franchises/${franchiseCode}`)
+            const franchise = Array.isArray(franchiseRes.data) ? franchiseRes.data[0] : franchiseRes.data
+            const fRates = Array.isArray(franchise) ? franchise : (franchise?.rates || [])
+
+            const fMatch = fRates.find(r => r.country?.trim().toLowerCase() === normCountry)
+            const fRest = fRates.find(r => r.country?.trim().toLowerCase() === 'rest of world')
+
+            // Franchise rates use `percent`
+            franchiseP = Number(fMatch?.percent ?? fRest?.percent ?? 0)
+          }
+
+          const totalPercent = clientP + franchiseP
+          console.log('Client Profit Percent:', clientP)
+          console.log('Franchise Profit Percent:', franchiseP)
+          console.log('Total Profit Percent:', totalPercent)
+
+          setProfitPercent(totalPercent.toString())
+        }
+      } catch (err) {
+        console.error(err)
+        setError('Failed to fetch profit percent data.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProfitPercent()
+  }, [country, userType, code])
 
   const handleFetchRates = async () => {
     if (!weight || !country) {
-      setError("Please provide weight and country.");
-      return;
+      setError('Please provide weight and country.')
+      return
     }
 
-    setLoading(true);
-    setError('');
-    setResults([]);
+    setLoading(true)
+    setError('')
+    setResults([])
 
     try {
       const promises = availableTypes.map(async (type) => {
@@ -72,30 +123,29 @@ export default function GetRatesPage() {
           type,
           weight,
           country,
-          profitPercent,
-        });
+          profitPercent
+        })
+        const res = await fetch(`/api/rate?${params.toString()}`)
+        const data = await res.json()
+        return { type, data }
+      })
 
-        const res = await fetch(`/api/rate?${params.toString()}`);
-        const data = await res.json();
-        return { type, data };
-      });
-
-      const resultsData = await Promise.all(promises);
-      const filtered = resultsData.filter(r => !r.data.error);
-      const firstError = resultsData.find(r => r.data.error);
+      const resultsData = await Promise.all(promises)
+      const filtered = resultsData.filter(r => !r.data.error)
+      const firstError = resultsData.find(r => r.data.error)
 
       if (!filtered.length && firstError) {
-        setError(firstError.data.error);
+        setError(firstError.data.error)
       }
 
-      setResults(filtered);
+      setResults(filtered)
     } catch (err) {
-      console.error(err);
-      setError("Failed to fetch rates.");
+      console.error(err)
+      setError('Failed to fetch rates.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -161,24 +211,26 @@ export default function GetRatesPage() {
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
               <p>Weight: {data.weight} kg</p>
-              {showProfit && <>
-                <p>Rate: ₹{data.rate.toLocaleString("en-IN")} /kg</p>
-              <p>Base Charge: ₹{data.baseCharge.toLocaleString("en-IN")}</p>
-              <p>Covid Charges: ₹{data.covidCharges.toLocaleString("en-IN")}</p>
-              <p>Fuel Charges: ₹{data.fuelCharges.toLocaleString("en-IN")}</p>
-              <p>Extra Charges: ₹{data.extraChargeTotal.toLocaleString("en-IN")}</p>
-              <p>Profit: ₹{data.profitCharges.toLocaleString("en-IN")} ({data.profitPercent}%)</p>
-              </>}
-              <p>Total: ₹{data.total.toLocaleString("en-IN")}</p>
-              <p>GST: ₹{data.GST.toLocaleString("en-IN")}</p>
+              {showProfit && (
+                <>
+                  <p>Rate: ₹{data.rate.toLocaleString('en-IN')} /kg</p>
+                  <p>Base Charge: ₹{data.baseCharge.toLocaleString('en-IN')}</p>
+                  <p>Covid Charges: ₹{data.covidCharges.toLocaleString('en-IN')}</p>
+                  <p>Fuel Charges: ₹{data.fuelCharges.toLocaleString('en-IN')}</p>
+                  <p>Extra Charges: ₹{data.extraChargeTotal.toLocaleString('en-IN')}</p>
+                  <p>Profit: ₹{data.profitCharges.toLocaleString('en-IN')} ({data.profitPercent}%)</p>
+                </>
+              )}
+              <p>Total: ₹{data.total.toLocaleString('en-IN')}</p>
+              <p>GST: ₹{data.GST.toLocaleString('en-IN')}</p>
               <p className="font-semibold text-green-600">
-                Total: ₹{data.totalWithGST.toLocaleString("en-IN", { maximumFractionDigits: 2 })} 
-                ({(data.totalWithGST / data.weight).toLocaleString("en-IN", { maximumFractionDigits: 2 })}/kg)
+                Total: ₹{data.totalWithGST.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                ({(data.totalWithGST / data.weight).toLocaleString('en-IN', { maximumFractionDigits: 2 })}/kg)
               </p>
             </CardContent>
           </Card>
         ))}
       </div>
     </div>
-  );
+  )
 }

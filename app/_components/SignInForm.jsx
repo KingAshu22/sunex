@@ -107,7 +107,7 @@ export default function SignInForm() {
           const authExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
           localStorage.setItem("id", data.franchise._id);
           localStorage.setItem("code", data.franchise.code);
-          localStorage.setItem("userType", "franchise");
+          localStorage.setItem("userType", data.franchise?.isBranch === "Yes" ? "branch" : "franchise");
           localStorage.setItem("name", data.franchise.name);
           localStorage.setItem("authExpiry", authExpiry);
           router.push(returnUrl);

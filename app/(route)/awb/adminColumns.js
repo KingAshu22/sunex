@@ -136,7 +136,7 @@ export const adminColumns = [
     id: "actions",
     header: "Actions",
     cell: ({ row }) => {
-      const router = useRouter(); // ✅ FIXED
+      const router = useRouter();
       const { trackingNumber } = row.original;
 
       return (
