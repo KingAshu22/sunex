@@ -25,7 +25,7 @@ const EditFranchise = ({ params }) => {
                     `/api/franchises/${code}`
                 );
                 const data = response.data;
-                setFranchise(data[0]);
+                setFranchise(data);
                 setLoading(false);
             } catch (err) {
                 setError("Failed to fetch Franchise data");

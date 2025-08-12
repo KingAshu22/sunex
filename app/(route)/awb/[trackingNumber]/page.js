@@ -201,7 +201,7 @@ export default function AWBView({ params }) {
               Shipment Details
             </h2>
             <div className="grid grid-cols-4 gap-1 text-xs">
-              <InfoItem label="Invoice Number" value={awbData?.invoiceNumber} />
+              <InfoItem label="Sr. No." value={awbData?.invoiceNumber} />
               <InfoItem
                 label="Date"
                 value={
@@ -214,7 +214,7 @@ export default function AWBView({ params }) {
               {/* <InfoItem
                 label="Amount"
                 value={
-                  "₹550 x 8.5 = ₹4675" // Assuming a fixed amount for demonstration
+                  "₹11,400/-" // Assuming a fixed amount for demonstration
                 }
               /> */}
               <InfoItem
