@@ -345,7 +345,7 @@ export default function ShippingInvoicePage() {
                         </div>
                     </div>
 
-                    <div className="h-[540px]">
+                    <div className="h-[560px]">
                         <table className="w-full border-collapse mb-2 text-[12px]">
                             <thead>
                                 <tr className="bg-gray-100">

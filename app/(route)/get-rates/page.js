@@ -213,19 +213,19 @@ export default function GetRatesPage() {
               <p>Weight: {data.weight} kg</p>
               {showProfit && (
                 <>
-                  <p>Rate: ₹{data.rate.toLocaleString('en-IN')} /kg</p>
-                  <p>Base Charge: ₹{data.baseCharge.toLocaleString('en-IN')}</p>
-                  <p>Covid Charges: ₹{data.covidCharges.toLocaleString('en-IN')}</p>
-                  <p>Fuel Charges: ₹{data.fuelCharges.toLocaleString('en-IN')}</p>
-                  <p>Extra Charges: ₹{data.extraChargeTotal.toLocaleString('en-IN')}</p>
-                  <p>Profit: ₹{data.profitCharges.toLocaleString('en-IN')} ({data.profitPercent}%)</p>
+                  <p>Rate: ₹{data.rate?.toLocaleString('en-IN')} /kg</p>
+                  <p>Base Charge: ₹{data.baseCharge?.toLocaleString('en-IN')}</p>
+                  <p>Covid Charges: ₹{data.covidCharges?.toLocaleString('en-IN')}</p>
+                  <p>Fuel Charges: ₹{data.fuelCharges?.toLocaleString('en-IN')}</p>
+                  <p>Extra Charges: ₹{data.extraChargeTotal?.toLocaleString('en-IN')}</p>
+                  <p>Profit: ₹{data.profitCharges?.toLocaleString('en-IN')} ({data.profitPercent}%)</p>
                 </>
               )}
-              <p>Total: ₹{data.total.toLocaleString('en-IN')}</p>
-              <p>GST: ₹{data.GST.toLocaleString('en-IN')}</p>
+              <p>Total: ₹{data.total?.toLocaleString('en-IN')}</p>
+              <p>GST: ₹{data.GST?.toLocaleString('en-IN')}</p>
               <p className="font-semibold text-green-600">
-                Total: ₹{data.totalWithGST.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                ({(data.totalWithGST / data.weight).toLocaleString('en-IN', { maximumFractionDigits: 2 })}/kg)
+                Total: ₹{data.totalWithGST?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                ({(data.totalWithGST / data.weight)?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}/kg)
               </p>
             </CardContent>
           </Card>

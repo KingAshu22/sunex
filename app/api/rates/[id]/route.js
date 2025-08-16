@@ -1,46 +1,73 @@
 import { NextResponse } from "next/server"
-import Rate from "@/models/Rate"
 import { connectToDB } from "@/app/_utils/mongodb"
+import Rate from "@/models/Rate"
 
-export async function PUT(request, { params }) {
+export async function GET(req, { params }) {
   try {
     await connectToDB()
     const { id } = await params;
-    const body = await request.json()
+    const rate = await Rate.findById(id)
 
-    if (!body.rates || !Array.isArray(body.rates)) {
-      return NextResponse.json({ error: "Invalid rates format" }, { status: 400 })
-    }
-
-    const updated = await Rate.findByIdAndUpdate(id, { rates: body.rates }, {
-      new: true,
-      runValidators: true,
-    })
-
-    if (!updated) {
+    if (!rate) {
       return NextResponse.json({ error: "Rate not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true, rate: updated })
-  } catch (err) {
-    console.error("PUT /api/rates/:id error:", err)
+    return NextResponse.json(rate)
+  } catch (error) {
+    console.error("Error fetching rate:", error)
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
   }
 }
 
-export async function DELETE(request, { params }) {
+export async function PUT(req, { params }) {
   try {
     await connectToDB()
-    const { id } = params
+    const { id } = await params;
+    const body = await req.json()
 
-    const deleted = await Rate.findByIdAndDelete(id)
-    if (!deleted) {
+    const { type, service, originalName, rates, zones } = body
+
+    if (!type || !service || !originalName || !rates || !zones) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    const updatedRate = await Rate.findByIdAndUpdate(
+      id,
+      {
+        type,
+        service,
+        originalName,
+        rates,
+        zones,
+        updatedAt: new Date(),
+      },
+      { new: true },
+    )
+
+    if (!updatedRate) {
       return NextResponse.json({ error: "Rate not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true })
-  } catch (err) {
-    console.error("DELETE /api/rates/:id error:", err)
+    return NextResponse.json(updatedRate)
+  } catch (error) {
+    console.error("Error updating rate:", error)
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+  }
+}
+
+export async function DELETE(req, { params }) {
+  try {
+    await connectToDB()
+    const { id } = await params;
+    const deletedRate = await Rate.findByIdAndDelete(id)
+
+    if (!deletedRate) {
+      return NextResponse.json({ error: "Rate not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({ message: "Rate deleted successfully" })
+  } catch (error) {
+    console.error("Error deleting rate:", error)
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
   }
 }

@@ -5,13 +5,16 @@ import Rate from "@/models/Rate"; // Your mongoose model
 export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");
-    const weight = parseFloat(searchParams.get("weight"));
+    let weight = parseFloat(searchParams.get("weight"));
     const country = searchParams.get("country");
     const profitPercent = parseFloat(searchParams.get("profitPercent")) || 0;
 
     if (!type || !weight || !country) {
         return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
     }
+
+    // ✅ Round weight to nearest 0.5 kg
+    weight = Math.round(weight * 2) / 2;
 
     await connectToDB();
 
@@ -24,6 +27,7 @@ export async function GET(req) {
 
         const { rates, zones } = rateResult;
 
+        // find zone for the given country
         let selectedZone;
         let extraCharges = {};
         for (const zoneObj of zones) {
@@ -38,29 +42,38 @@ export async function GET(req) {
             return NextResponse.json({ error: "Zone not found for the given country" }, { status: 404 });
         }
 
-        const roundedWeight = weight.toFixed(2); // No ceil, just 2 decimals
-        let weightRate = rates.find((rate) => parseFloat(rate.kg) === parseFloat(roundedWeight));
+        // sort all available weights
+        const sortedRates = rates
+            .map(rate => ({ kg: parseFloat(rate.kg), data: rate }))
+            .sort((a, b) => a.kg - b.kg);
 
+        // find exact match
+        let weightRate = sortedRates.find(r => r.kg === weight)?.data;
+
+        // if no exact match, find closest lower or equal weight
+        let closestWeight, zoneRate;
         if (!weightRate) {
-            const sortedRates = rates
-                .map(rate => ({ kg: parseFloat(rate.kg), data: rate }))
-                .sort((a, b) => b.kg - a.kg);
-
-            const fallbackRate = sortedRates.find(r => r.kg <= weight);
+            const fallbackRate = [...sortedRates].reverse().find(r => r.kg <= weight);
             if (fallbackRate) {
                 weightRate = fallbackRate.data;
+                closestWeight = fallbackRate.kg;
             } else {
                 return NextResponse.json({ error: "No suitable rate found for the weight" }, { status: 404 });
             }
+        } else {
+            closestWeight = weight;
         }
 
-        const zoneRate = weightRate[selectedZone];
+        zoneRate = weightRate[selectedZone];
         if (!zoneRate) {
             return NextResponse.json({ error: "Rate not found for the selected zone" }, { status: 404 });
         }
 
-        const rate = parseFloat((zoneRate / weight).toFixed(2));
-        const baseCharge = parseFloat((rate * weight).toFixed(2));
+        // ✅ calculate per kg rate from closest available weight
+        const perKgRate = parseFloat((zoneRate / closestWeight).toFixed(2));
+
+        // ✅ base charge using rounded weight
+        const baseCharge = parseFloat((perKgRate * weight).toFixed(2));
         let baseCharges = baseCharge;
 
         // COVID charges
@@ -79,7 +92,7 @@ export async function GET(req) {
         }
         baseCharges += extraChargeTotal;
 
-        // Fuel charges come last now
+        // Fuel charges
         let fuelCharges = 0;
         if (type === "dhl") {
             fuelCharges = parseFloat(((27.5 / 100) * baseCharges).toFixed(2));
@@ -105,9 +118,10 @@ export async function GET(req) {
         return NextResponse.json({
             service: rateResult.service,
             zone: selectedZone,
-            weight: roundedWeight,
+            requestedWeight: weight,      // ✅ final rounded weight used
+            weight,                // ✅ closest db weight used for per-kg rate
+            rate: perKgRate,                    // ✅ actual calculated per-kg rate
             zoneRate: parseFloat(zoneRate.toFixed(2)),
-            rate,
             baseCharge,
             covidCharges,
             extraCharges,
