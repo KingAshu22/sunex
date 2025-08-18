@@ -7,6 +7,9 @@ const AwbSchema = new Schema({
   invoiceNumber: String,
   date: Date,
   trackingNumber: String,
+  cNoteNumber: String,
+  cNoteVendorName: String,
+  awbNumber: String,
   forwardingNumber: String,
   forwardingLink: String,
   shippingCurrency: String,
@@ -36,9 +39,6 @@ const AwbSchema = new Schema({
     GST: String,
     weight: String,
   },
-  vendor: String,
-  cNote: String,
-  otsWeight: String,
 });
 
 const Awb = models.Awb || model("Awb", AwbSchema);

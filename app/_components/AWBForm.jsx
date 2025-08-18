@@ -87,8 +87,11 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [refCode, setRefCode] = useState(awb?.refCode || localStorage.getItem("code") || "");
 
   //Forwarding Details
-  const [forwardingNo, setForwardingNo] = useState(awb?.forwardingNo || "")
+  const [forwardingNumber, setForwardingNumber] = useState(awb?.forwardingNumber || "")
   const [forwardingLink, setForwardingLink] = useState(awb?.forwardingLink || "")
+  const [cNoteNumber, setCNoteNumber] = useState(awb?.cNoteNumber || "")
+  const [cNoteVendorName, setCNoteVendorName] = useState(awb?.cNoteVendorName || "")
+  const [awbNumber, setAwbNumber] = useState(awb?.awbNumber || "")
 
   const [shippingCurrency, setShippingCurrency] = useState(awb?.shippingCurrency || "₹")
   const [totalShippingValue, setTotalShippingValue] = useState(awb?.totalShippingValue || 0)
@@ -733,8 +736,11 @@ export default function AWBForm({ isEdit = false, awb }) {
         via,
         shipmentType,
         refCode,
-        forwardingNo,
+        forwardingNumber,
         forwardingLink,
+        cNoteNumber,
+        cNoteVendorName,
+        awbNumber,
         shippingCurrency,
         sender: {
           name: senderName,
@@ -928,12 +934,12 @@ export default function AWBForm({ isEdit = false, awb }) {
             </div>
             <div className="space-y-1">
               <Label htmlFor="trackingNumber" className="text-xs">
-                Tracking No:
+                AWB No:
               </Label>
               <Input
                 id="trackingNumber"
                 type="number"
-                placeholder="Tracking No."
+                placeholder="AWB No."
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
                 className="h-6 text-xs"
@@ -1073,8 +1079,8 @@ export default function AWBForm({ isEdit = false, awb }) {
                     id="forwardingNo"
                     type="text"
                     placeholder="Forwarding No."
-                    value={forwardingNo}
-                    onChange={(e) => setForwardingNo(e.target.value)}
+                    value={forwardingNumber}
+                    onChange={(e) => setForwardingNumber(e.target.value)}
                     className="h-6 text-xs"
                   />
                 </div>
@@ -1088,6 +1094,45 @@ export default function AWBForm({ isEdit = false, awb }) {
                     placeholder="Forwarding Link."
                     value={forwardingLink}
                     onChange={(e) => setForwardingLink(e.target.value)}
+                    className="h-6 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="cNoteNumber" className="text-xs">
+                    C Note No:
+                  </Label>
+                  <Input
+                    id="cNoteNumber"
+                    type="text"
+                    placeholder="C Note No."
+                    value={cNoteNumber}
+                    onChange={(e) => setCNoteNumber(e.target.value)}
+                    className="h-6 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="cNoteVendorName" className="text-xs">
+                    C Note Vendor Name:
+                  </Label>
+                  <Input
+                    id="cNoteVendorName"
+                    type="text"
+                    placeholder="C Note Vendor Name"
+                    value={cNoteVendorName}
+                    onChange={(e) => setCNoteVendorName(e.target.value)}
+                    className="h-6 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="awbNumber" className="text-xs">
+                    Tracking No:
+                  </Label>
+                  <Input
+                    id="awbNumber"
+                    type="text"
+                    placeholder="Tracking No."
+                    value={awbNumber}
+                    onChange={(e) => setAwbNumber(e.target.value)}
                     className="h-6 text-xs"
                   />
                 </div>

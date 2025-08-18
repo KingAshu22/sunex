@@ -47,6 +47,8 @@ const RateSchema = new mongoose.Schema(
         },
       },
     ],
+    covidCharges: Number,
+    fuelCharges: Number,
     createdAt: {
       type: Date,
       default: Date.now,

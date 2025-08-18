@@ -22,6 +22,8 @@ export default function UploadRatePage() {
     type: "",
     service: "",
     originalName: "",
+    covidCharges: "",
+    fuelCharges: "",
   })
   const [ratesValidation, setRatesValidation] = useState(null)
   const [zonesValidation, setZonesValidation] = useState(null)
@@ -332,6 +334,26 @@ export default function UploadRatePage() {
                     value={rateData.originalName}
                     onChange={(e) => setRateData({ ...rateData, originalName: e.target.value })}
                     placeholder="e.g., DHL"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="covidCharges">Covid Charges</Label>
+                  <Input
+                    id="covidCharges"
+                    value={rateData.covideCharges}
+                    onChange={(e) => setRateData({ ...rateData, covidCharges: e.target.value })}
+                    placeholder="Covid charges per kg"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="fuelCharges">Fuel Charges</Label>
+                  <Input
+                    id="fuelCharges"
+                    value={rateData.fuelCharges}
+                    onChange={(e) => setRateData({ ...rateData, fuelCharges: e.target.value })}
+                    placeholder="Fuel charges in percentage"
                     required
                   />
                 </div>

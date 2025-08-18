@@ -440,6 +440,26 @@ export default function EditRatePage() {
                   onChange={(e) => setRate({ ...rate, originalName: e.target.value })}
                 />
               </div>
+              <div>
+                <Label htmlFor="covidCharges">Covid Charges</Label>
+                <Input
+                  id="covidCharges"
+                  value={rate.covideCharges}
+                  onChange={(e) => setRate({ ...rate, covidCharges: e.target.value })}
+                  placeholder="Covid charges per kg"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="fuelCharges">Fuel Charges</Label>
+                <Input
+                  id="fuelCharges"
+                  value={rate.fuelCharges}
+                  onChange={(e) => setRate({ ...rate, fuelCharges: e.target.value })}
+                  placeholder="Fuel charges in percentage"
+                  required
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
