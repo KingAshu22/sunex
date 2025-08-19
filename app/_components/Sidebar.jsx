@@ -40,17 +40,22 @@ export function AppSidebar() {
     },
     {
       title: "Booking",
-      url: "/awb",
+      url: "/awb/create",
       icon: Box,
     },
     {
-      title: "Customers",
-      url: "/customers",
-      icon: Contact,
+      title: "Reports",
+      url: "/awb",
+      icon: Box,
     },
     // Add Clients menu item conditionally
     ...(userType === "admin" || userType === "branch"
       ? [
+        {
+          title: "Customers",
+          url: "/customers",
+          icon: Contact,
+        },
         {
           title: "Clients",
           url: "/clients",
@@ -63,7 +68,7 @@ export function AppSidebar() {
         },
       ]
       : []),
-      ...(userType === "franchise"
+    ...(userType === "franchise"
       ? [
         {
           title: "Clients",

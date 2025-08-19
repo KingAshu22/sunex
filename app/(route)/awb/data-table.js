@@ -63,7 +63,7 @@ export function DataTable({ columns, data }) {
           placeholder="Filter by AWB No..."
           value={table.getColumn("trackingNumber")?.getFilterValue() ?? ""}
           onChange={(event) =>
-            table.getColumn("invoiceNumber")?.setFilterValue(event.target.value)
+            table.getColumn("trackingNumber")?.setFilterValue(event.target.value)
           }
           className="max-w-40"
         />
