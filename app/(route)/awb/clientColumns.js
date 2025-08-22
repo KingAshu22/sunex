@@ -84,17 +84,28 @@ export const clientColumns = [
             return (
                 <div className="flex flex-rows gap-2">
                     <Button
+                        className="px-2 py-1 bg-yellow-800"
+                        onClick={() => window.open(`/track/${trackingNumber}`)}
+                    >
+                        Track
+                    </Button>
+                    <Button
                         className="px-2 py-1 bg-green-800"
                         onClick={() => window.open(`/awb/${trackingNumber}`)}
                     >
-                        <Eye className="w-[20px] h-[20px]" />
+                        AWB
                     </Button>
                     <Button
                         className="bg-blue-400"
+                        onClick={() => router.push(`/shipping-invoice/${trackingNumber}`)}
+                    >
+                        Ship INV
+                    </Button>
+                    <Button
+                        className="bg-red-400"
                         onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}
                     >
-                        <Plane className="w-5 h-5" />
-                        <Barcode className="w-5 h-5" />
+                        Docs
                     </Button>
                 </div>
             );

@@ -133,23 +133,19 @@ export default function AWBView({ params }) {
           {/* Flex container for logo, barcode, and title */}
           <div className="flex items-center justify-between">
             <div>
-              <Image
-                src="/Sun.jpg"
-                alt="SunEx Services"
-                width={200}
-                height={60}
-                className=""
-              />
+              <span className="text-2xl font-extrabold text-[#E31E24] tracking-tight">
+                SunEx <span className="text-[#232C65]">Services</span>
+              </span>
               {/* Add contact info below the logo */}
               <div className="text-left mt-2">
                 <p className="text-sm text-gray-500 flex flex-row">
                   <Phone className="h-4" /> +91 90044 05236
                 </p>
                 <p className="text-sm text-gray-500 flex flex-row">
-                  <Mail className="h-4" /> sunexpress1511@gmail.com
+                  <Mail className="h-4" /> sunexcourierandcargo@gmail.com
                 </p>
                 <p className="text-sm text-gray-500 flex flex-row">
-                  <MapPin className="h-4" /> Mumbai
+                  <MapPin className="h-4" />Parsi Panchayat Rd, Andheri (E), Mum-69
                 </p>
               </div>
             </div>
@@ -218,10 +214,9 @@ export default function AWBView({ params }) {
                 }
               /> */}
               <InfoItem
-                label="Status"
+                label="Service"
                 value={
-                  awbData?.parcelStatus[awbData?.parcelStatus.length - 1]
-                    ?.status
+                  awbData?.rateInfo?.courier?.toUpperCase()
                 }
               />
             </div>

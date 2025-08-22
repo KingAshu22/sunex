@@ -4,6 +4,7 @@ import {
   User,
   Search,
   Settings,
+  Plus,
   Sun,
   Box,
   Contact,
@@ -39,12 +40,12 @@ export function AppSidebar() {
       icon: LayoutDashboard,
     },
     {
-      title: "Booking",
+      title: "New Booking",
       url: "/awb/create",
-      icon: Box,
+      icon: Plus,
     },
     {
-      title: "Reports",
+      title: "Show Bookings",
       url: "/awb",
       icon: Box,
     },
