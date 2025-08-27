@@ -67,9 +67,6 @@ export function DataTable({ columns, data }) {
           }
           className="max-w-40"
         />
-        <Button onClick={() => router.push("/awb/create")}>
-          New Booking
-        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">

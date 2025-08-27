@@ -328,9 +328,9 @@ function Dashboard() {
       <motion.div
         {...fadeUp}
         className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${(localStorage.getItem("userType") === "admin" ||
-            localStorage.getItem("userType") === "branch")
-            ? "xl:grid-cols-6"
-            : "xl:grid-cols-5"
+          localStorage.getItem("userType") === "branch")
+          ? "xl:grid-cols-6"
+          : "xl:grid-cols-4"
           } gap-4 mb-8`}
       >
         <KPI
@@ -359,12 +359,14 @@ function Dashboard() {
           value={analytics.topDest?.[0]?.country || "—"}
           accent="from-blue-500 to-indigo-500"
         />
-
-        <KPI
-          title="Revenue"
-          value={niceCurrency(analytics.totalRevenue, currency)}
-          accent="from-fuchsia-500 to-purple-500"
-        />
+        {(localStorage.getItem("userType") === "admin" ||
+          localStorage.getItem("userType") === "branch") && (
+            <KPI
+              title="Revenue"
+              value={niceCurrency(analytics.totalRevenue, currency)}
+              accent="from-fuchsia-500 to-purple-500"
+            />
+          )}
 
         <KPI
           title="Countries Served"
