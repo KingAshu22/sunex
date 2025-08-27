@@ -266,11 +266,11 @@ export default function ShippingInvoicePage() {
     `
 
     const isSinglePage = page2Rows.length === 0
-    const useFixedHeight590 = isSinglePage && rows.length < 28
+    const useFixedHeight580 = isSinglePage && rows.length < 28
 
     // Page 1 HTML
     const page1TableHTML = `
-      <div class="table-wrap" style="${useFixedHeight590 ? "height:590px;" : ""}">
+      <div class="table-wrap" style="${useFixedHeight580 ? "height:580px;" : ""}">
         <table class="inv-table">
           ${tableHeadHTML}
           <tbody>
@@ -545,8 +545,8 @@ export default function ShippingInvoicePage() {
             </div>
           </div>
 
-          {/* Dynamic height: 590px if rows < 28 */}
-          <div style={{ height: rowCount < 28 ? 590 : undefined }}>
+          {/* Dynamic height: 580px if rows < 28 */}
+          <div style={{ height: rowCount < 28 ? 580 : undefined }}>
             <table className="w-full border-collapse mb-2 text-[12px]">
               <thead>
                 <tr className="bg-gray-100">
