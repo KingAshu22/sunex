@@ -320,6 +320,24 @@ export default function TrackingDetails({ parcelDetails }) {
             <p className="font-semibold text-gray-600">Parcel Type:</p>
             <p className="text-lg font-medium text-indigo-700">{parcelDetails.parcelType}</p>
           </div>
+          <div className="space-y-2">
+            <p className="font-semibold text-gray-600">Forwarding Number:</p>
+            <p className="text-lg font-medium text-indigo-700">{parcelDetails.forwardingNumber}</p>
+          </div>
+          <div className="space-y-2">
+            <p className="font-semibold text-gray-600">Forwarding Link:</p>
+            {parcelDetails.forwardingLink ? (
+              <a
+                href={parcelDetails.forwardingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-lg font-medium text-indigo-700 hover:underline"
+              >
+                {parcelDetails.forwardingLink}
+              </a>
+            ) : (<p className="text-lg font-medium text-indigo-700">N/A</p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
