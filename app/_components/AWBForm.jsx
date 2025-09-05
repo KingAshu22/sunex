@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { format } from "date-fns"
-import { CalendarIcon, Plus, Minus, Search, TruckIcon, CheckCircle } from "lucide-react"
+import { CalendarIcon, Plus, Minus, Search, TruckIcon, CheckCircle, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardFooter, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Countries, countryCodeMap } from "@/app/constants/country"
 import axios from "axios"
@@ -30,6 +30,55 @@ import { Checkbox } from "@/components/ui/checkbox"
 import ItemNameAutocomplete from "./ItemNameAutoComplete"
 import { Badge } from "@/components/ui/badge"
 import { Check, ChevronsUpDown } from "lucide-react"
+
+const mockHsnData = [
+  { code: "482030", item: "Document" },
+  { code: "630790", item: "Textile articles" },
+  { code: "950510", item: "Festive articles" },
+  { code: "491110", item: "Commercial brochures" },
+  { code: "392690", item: "Plastic articles" },
+  { code: "621710", item: "Garment accessories" },
+  { code: "950590", item: "Party accessories" },
+  { code: "491199", item: "Printed advertising material" },
+  { code: "392640", item: "Statuettes" },
+  { code: "621780", item: "Textile accessories" },
+  { code: "950591", item: "Halloween articles" },
+  { code: "491191", item: "Printed advertising material" },
+  { code: "392641", item: "Statuettes" },
+  { code: "621781", item: "Textile accessories" },
+  { code: "950592", item: "Christmas articles" },
+  { code: "491192", item: "Printed advertising material" },
+  { code: "392642", item: "Statuettes" },
+  { code: "621782", item: "Textile accessories" },
+  { code: "950593", item: "Easter articles" },
+  { code: "491193", item: "Printed advertising material" },
+  { code: "392643", item: "Statuettes" },
+  { code: "621783", item: "Textile accessories" },
+  { code: "950594", item: "Valentine's Day articles" },
+  { code: "491194", item: "Printed advertising material" },
+  { code: "392644", item: "Statuettes" },
+  { code: "621784", item: "Textile accessories" },
+  { code: "950595", item: "New Year's articles" },
+  { code: "491195", item: "Printed advertising material" },
+  { code: "392645", item: "Statuettes" },
+  { code: "621785", item: "Textile accessories" },
+  { code: "950596", item: "Thanksgiving articles" },
+  { code: "491196", item: "Printed advertising material" },
+  { code: "392646", item: "Statuettes" },
+  { code: "621786", item: "Textile accessories" },
+  { code: "950597", item: "St. Patrick's Day articles" },
+  { code: "491197", item: "Printed advertising material" },
+  { code: "392647", item: "Statuettes" },
+  { code: "621787", item: "Textile accessories" },
+  { code: "950598", item: "Mother's Day articles" },
+  { code: "491198", item: "Printed advertising material" },
+  { code: "392648", item: "Statuettes" },
+  { code: "621788", item: "Textile accessories" },
+  { code: "950599", item: "Father's Day articles" },
+  { code: "491199", item: "Printed advertising material" },
+  { code: "392649", item: "Statuettes" },
+  { code: "621789", item: "Textile accessories" },
+]
 
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
@@ -84,7 +133,12 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [trackingNumber, setTrackingNumber] = useState(awb?.trackingNumber || "")
   const [via, setVia] = useState(awb?.via || "Air Shipment")
   const [shipmentType, setShipmentType] = useState(awb?.shipmentType || "Non Document")
-  const [refCode, setRefCode] = useState(awb?.refCode || localStorage.getItem("code") || "");
+
+  const [refCode, setRefCode] = useState(awb?.refCode || "")
+  const [refOptions, setRefOptions] = useState([])
+  const [refSearchTerm, setRefSearchTerm] = useState("")
+  const [isRefDropdownOpen, setIsRefDropdownOpen] = useState(false)
+  const [selectedRefOption, setSelectedRefOption] = useState(null)
 
   //Forwarding Details
   const [forwardingNumber, setForwardingNumber] = useState(awb?.forwardingNumber || "")
@@ -119,9 +173,9 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [receiverContact, setReceiverContact] = useState(awb?.receiver?.contact || "")
 
   // Box details
-  const [boxes, setBoxes] = useState(awb?.boxes || []);
-  const [ourBoxes, setOurBoxes] = useState(awb?.ourBoxes || []);
-  const [vendorBoxes, setVendorBoxes] = useState(awb?.vendorBoxes || []);
+  const [boxes, setBoxes] = useState(awb?.boxes || [])
+  const [ourBoxes, setOurBoxes] = useState(awb?.ourBoxes || [])
+  const [vendorBoxes, setVendorBoxes] = useState(awb?.vendorBoxes || [])
 
   // Derived state
   const [totalChargeableWeight, setTotalChargeableWeight] = useState("")
@@ -188,84 +242,203 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    const fetchProfitPercentForUser = async () => {
-      if (!receiverCountry) return;
+    const fetchRefOptions = async () => {
+      const userType = localStorage.getItem("userType") || ""
+      const code = localStorage.getItem("code") || ""
 
-      setLoading(true);
-      setError("");
+      if (!awb?.refCode) {
+        if (userType === "franchise" || userType === "branch" || userType === "client") {
+          setRefCode(code)
+        }
+      }
 
       try {
-        const ut = localStorage.getItem("userType") || "";
-        const code = localStorage.getItem("code") || "";
-        const normCountry = receiverCountry.trim().toLowerCase();
+        if (userType === "admin" || userType === "branch") {
+          // Fetch all franchises and clients
+          const [franchiseRes, clientRes] = await Promise.all([axios.get("/api/franchises"), axios.get("/api/clients")])
+
+          const franchises = (Array.isArray(franchiseRes.data) ? franchiseRes.data : [franchiseRes.data]).map((f) => ({
+            code: f.code,
+            name: f.name,
+            type: "franchise",
+          }))
+
+          const clients = (Array.isArray(clientRes.data) ? clientRes.data : [clientRes.data]).map((c) => ({
+            code: c.code,
+            name: c.name,
+            type: "client",
+          }))
+
+          const allOptions = [...franchises, ...clients]
+          setRefOptions(allOptions)
+
+          if (userType === "branch" && code) {
+            const matchingOption = allOptions.find((option) => option.code === code)
+            if (matchingOption) {
+              setSelectedRefOption(matchingOption)
+            }
+          }
+        } else if (userType === "franchise") {
+          // Fetch only clients of this franchise
+          const clientRes = await axios.get("/api/clients", {
+            headers: {
+              userType,
+              userId: code,
+            },
+          })
+          const clients = (Array.isArray(clientRes.data) ? clientRes.data : [clientRes.data]).map((c) => ({
+            code: c.code,
+            name: c.name,
+            type: "client",
+          }))
+
+          setRefOptions(clients)
+        } else if (userType === "client") {
+          try {
+            const [franchiseRes, clientRes] = await Promise.all([
+              axios.get("/api/franchises"),
+              axios.get("/api/clients"),
+            ])
+
+            const franchises = (Array.isArray(franchiseRes.data) ? franchiseRes.data : [franchiseRes.data]).map(
+              (f) => ({
+                code: f.code,
+                name: f.name,
+                type: "franchise",
+              }),
+            )
+
+            const clients = (Array.isArray(clientRes.data) ? clientRes.data : [clientRes.data]).map((c) => ({
+              code: c.code,
+              name: c.name,
+              type: "client",
+            }))
+
+            const allOptions = [...franchises, ...clients]
+            setRefOptions(allOptions)
+
+            // Find and select the matching option for client
+            const matchingOption = allOptions.find((option) => option.code === code)
+            if (matchingOption) {
+              setSelectedRefOption(matchingOption)
+            }
+          } catch (error) {
+            console.error("Error fetching options for client:", error)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching ref options:", error)
+      }
+    }
+
+    fetchRefOptions()
+  }, [])
+
+  useEffect(() => {
+  if (isEdit) {
+    const storedCode = awb?.refCode || "";
+
+    if (storedCode && refOptions.length > 0) {
+      const matchingOption = refOptions.find((opt) => opt.code === storedCode);
+
+      if (matchingOption) {
+        setRefSearchTerm(matchingOption.name); // show name in input
+      }
+    }
+  }
+}, [isEdit, refOptions]);
+
+  const filteredRefOptions = refOptions.filter(
+    (option) =>
+      option.name.toLowerCase().includes(refSearchTerm.toLowerCase()) ||
+      option.code.toLowerCase().includes(refSearchTerm.toLowerCase()),
+  )
+
+  const handleRefOptionSelect = (option) => {
+    setRefCode(option.code)
+    setSelectedRefOption(option)
+    setRefSearchTerm(option.name)
+    setIsRefDropdownOpen(false)
+  }
+
+  useEffect(() => {
+    const fetchProfitPercentForUser = async () => {
+      if (!receiverCountry) return
+
+      setLoading(true)
+      setError("")
+
+      try {
+        const ut = localStorage.getItem("userType") || ""
+        const code = localStorage.getItem("code") || ""
+        const normCountry = receiverCountry.trim().toLowerCase()
 
         if (ut === "admin") {
           // Admin enters profit manually - do nothing here
-          setLoading(false);
-          return;
+          setLoading(false)
+          return
         }
 
         /** ───── Franchise user ───── */
         if (ut === "franchise") {
-          const resp = await axios.get(`/api/franchises/${code}`);
-          const franchise = Array.isArray(resp.data) ? resp.data[0] : resp.data;
-          const fRates = franchise?.rates || [];
+          const resp = await axios.get(`/api/franchises/${code}`)
+          const franchise = Array.isArray(resp.data) ? resp.data[0] : resp.data
+          const fRates = franchise?.rates || []
 
-          const fMatch = fRates.find(r => r.country.trim().toLowerCase() === normCountry);
-          const fRest = fRates.find(r => r.country.trim().toLowerCase() === "rest of world");
+          const fMatch = fRates.find((r) => r.country.trim().toLowerCase() === normCountry)
+          const fRest = fRates.find((r) => r.country.trim().toLowerCase() === "rest of world")
 
-          const percent = Number(fMatch?.percent ?? fRest?.percent ?? 0);
-          setProfitPercent(percent);
-          setLoading(false);
-          return;
+          const percent = Number(fMatch?.percent ?? fRest?.percent ?? 0)
+          setProfitPercent(percent)
+          setLoading(false)
+          return
         }
 
         /** ───── Client user ───── */
         if (ut === "client") {
           // 1. Client doc
-          const clientRes = await axios.get(`/api/clients/${code}`);
-          const client = Array.isArray(clientRes.data) ? clientRes.data[0] : clientRes.data;
+          const clientRes = await axios.get(`/api/clients/${code}`)
+          const client = Array.isArray(clientRes.data) ? clientRes.data[0] : clientRes.data
 
-          const clientRates = client?.rates || [];
-          const cMatch = clientRates.find(r => r.country.trim().toLowerCase() === normCountry);
-          const cRest = clientRates.find(r => r.country.trim().toLowerCase() === "rest of world");
+          const clientRates = client?.rates || []
+          const cMatch = clientRates.find((r) => r.country.trim().toLowerCase() === normCountry)
+          const cRest = clientRates.find((r) => r.country.trim().toLowerCase() === "rest of world")
 
-          const clientPercent = Number(cMatch?.profitPercent ?? cRest?.profitPercent ?? 0);
+          const clientPercent = Number(cMatch?.profitPercent ?? cRest?.profitPercent ?? 0)
 
           // 2. Franchise doc from client's owner
-          let franchisePercent = 0;
+          let franchisePercent = 0
           if (client?.owner) {
-            const fRes = await axios.get(`/api/franchises/${client.owner}`);
-            const franchise = Array.isArray(fRes.data) ? fRes.data[0] : fRes.data;
-            const fRates = franchise?.rates || [];
+            const fRes = await axios.get(`/api/franchises/${client.owner}`)
+            const franchise = Array.isArray(fRes.data) ? fRes.data[0] : fRes.data
+            const fRates = franchise?.rates || []
 
-            const fMatch = fRates.find(r => r.country.trim().toLowerCase() === normCountry);
-            const fRest = fRates.find(r => r.country.trim().toLowerCase() === "rest of world");
+            const fMatch = fRates.find((r) => r.country.trim().toLowerCase() === normCountry)
+            const fRest = fRates.find((r) => r.country.trim().toLowerCase() === "rest of world")
 
             // Franchise rates use `percent` field
-            franchisePercent = Number(fMatch?.percent ?? fRest?.percent ?? 0);
+            franchisePercent = Number(fMatch?.percent ?? fRest?.percent ?? 0)
           }
 
-          const total = clientPercent + franchisePercent;
+          const total = clientPercent + franchisePercent
 
-          console.log("Client Profit Percent:", clientPercent);
-          console.log("Franchise Profit Percent:", franchisePercent);
-          console.log("Total Profit Percent:", total);
+          console.log("Client Profit Percent:", clientPercent)
+          console.log("Franchise Profit Percent:", franchisePercent)
+          console.log("Total Profit Percent:", total)
 
-          setProfitPercent(total);
-          setLoading(false);
-          return;
+          setProfitPercent(total)
+          setLoading(false)
+          return
         }
-
       } catch (err) {
-        console.error("Error fetching profit percent for AWB:", err);
-        setError("Failed to fetch profit percent data");
-        setLoading(false);
+        console.error("Error fetching profit percent for AWB:", err)
+        setError("Failed to fetch profit percent data")
+        setLoading(false)
       }
-    };
+    }
 
-    fetchProfitPercentForUser();
-  }, [receiverCountry]);
+    fetchProfitPercentForUser()
+  }, [receiverCountry])
 
   // Fetch customers on component mount
   useEffect(() => {
@@ -772,14 +945,14 @@ export default function AWBForm({ isEdit = false, awb }) {
         ...(isEdit
           ? {}
           : {
-            parcelStatus: [
-              {
-                status: "Shipment AWB Prepared - BOM HUB",
-                timestamp: new Date(),
-                comment: "",
-              },
-            ],
-          }),
+              parcelStatus: [
+                {
+                  status: "Shipment AWB Prepared - BOM HUB",
+                  timestamp: new Date(),
+                  comment: "",
+                },
+              ],
+            }),
         // Add selected rate information if available
         ...(selectedRate && {
           rateInfo: {
@@ -1018,7 +1191,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     variant="outline"
                     role="combobox"
                     aria-expanded={receiverCountryOpen}
-                    className="w-full justify-between h-8 text-xs"
+                    className="w-full justify-between h-8 text-xs bg-transparent"
                   >
                     {receiverCountry || "Select country..."}
                     <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
@@ -1041,10 +1214,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                             className="text-xs"
                           >
                             <Check
-                              className={cn(
-                                "mr-2 h-3 w-3",
-                                receiverCountry === country ? "opacity-100" : "opacity-0",
-                              )}
+                              className={cn("mr-2 h-3 w-3", receiverCountry === country ? "opacity-100" : "opacity-0")}
                             />
                             {country}
                           </CommandItem>
@@ -1055,20 +1225,69 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="refCode" className="text-xs">
-                Reference Code
-              </Label>
-              <Input
-                id="refCode"
-                type="number"
-                placeholder="Reference Code"
-                required
-                value={refCode}
-                onChange={(e) => setRefCode(e.target.value)}
-                className="h-6 text-xs"
-              />
-            </div>
+            {localStorage.getItem("userType") !== "client" && (
+              <div className="relative">
+                <Label htmlFor="refCode" className="text-xs">
+                  Reference Code
+                </Label>
+                {localStorage.getItem("userType") === "admin" ||
+                localStorage.getItem("userType") === "branch" ||
+                localStorage.getItem("userType") === "franchise" ? (
+                  <div className="relative">
+                    <Input
+                      id="refCode"
+                      type="text"
+                      placeholder={localStorage.getItem("name") || "Franchise/Client Name"}
+                      value={refSearchTerm}
+                      onChange={(e) => {
+                        setRefSearchTerm(e.target.value)
+                        setIsRefDropdownOpen(true)
+                      }}
+                      onFocus={() => setIsRefDropdownOpen(true)}
+                      className="h-6 text-xs pr-8"
+                      autoComplete="off"
+                      required
+                    />
+                    <ChevronDown
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 cursor-pointer"
+                      onClick={() => setIsRefDropdownOpen(!isRefDropdownOpen)}
+                    />
+
+                    {isRefDropdownOpen && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                        {filteredRefOptions.length > 0 ? (
+                          filteredRefOptions.map((option) => (
+                            <div
+                              key={`${option.type}-${option.code}`}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-xs flex justify-between items-center"
+                              onClick={() => handleRefOptionSelect(option)}
+                            >
+                              <span className="text-[10px]">{option.name}</span>
+                              <span className="text-gray-500 text-[10px]">
+                                {option.type === "franchise" ? "F" : "C"}-{option.code}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-3 py-2 text-gray-500 text-xs">No options found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Input
+                    id="refCode"
+                    type="number"
+                    placeholder="Reference Code"
+                    required
+                    value={refCode}
+                    onChange={(e) => setRefCode(e.target.value)}
+                    autoComplete="off"
+                    className="h-6 text-xs"
+                  />
+                )}
+              </div>
+            )}
             {isEdit && (
               <>
                 <div className="space-y-1">
@@ -1274,7 +1493,9 @@ export default function AWBForm({ isEdit = false, awb }) {
           <div className="col-span-2">
             <Card className="border-gray-200">
               <CardHeader className="-my-6">
-                <CardTitle className="text-sm text-[#232C65]">Available Rates<span className="text-xs text-gray-600 mt-1">  (Including GST)</span></CardTitle>
+                <CardTitle className="text-sm text-[#232C65]">
+                  Available Rates<span className="text-xs text-gray-600 mt-1"> (Including GST)</span>
+                </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
                 {fetchingRates ? (
@@ -1468,7 +1689,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                       variant="outline"
                       role="combobox"
                       aria-expanded={senderCountryOpen}
-                      className="w-full justify-between h-6 text-xs"
+                      className="w-full justify-between h-6 text-xs bg-transparent"
                     >
                       {senderCountry || "Select country..."}
                       <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
@@ -1763,15 +1984,16 @@ export default function AWBForm({ isEdit = false, awb }) {
                         <div className="space-y-1">
                           {box.items.map((item, itemIndex) => (
                             <div key={itemIndex} className="border-b-2 -my-4">
-                              <CardHeader className="flex flex-row items-center justify-between -my-6">
-                              </CardHeader>
+                              <CardHeader className="flex flex-row items-center justify-between -my-6"></CardHeader>
                               <CardContent className="-my-4">
                                 <div className="grid grid-cols-12 gap-1">
                                   {/* Quantity */}
                                   <div className="col-span-2">
-                                    {itemIndex == 0 && <Label htmlFor={`itemNo-${boxIndex}-${itemIndex}`} className="text-xs">
-                                      Item No.
-                                    </Label>}
+                                    {itemIndex == 0 && (
+                                      <Label htmlFor={`itemNo-${boxIndex}-${itemIndex}`} className="text-xs">
+                                        Item No.
+                                      </Label>
+                                    )}
                                     <Input
                                       id={`itemNo-${boxIndex}-${itemIndex}`}
                                       type="number"
@@ -1786,9 +2008,11 @@ export default function AWBForm({ isEdit = false, awb }) {
                                   </div>
                                   {/* Item Name - Take more space */}
                                   <div className="col-span-3">
-                                    {itemIndex == 0 && <Label htmlFor={`itemName-${boxIndex}-${itemIndex}`} className="text-xs">
-                                      Name*
-                                    </Label>}
+                                    {itemIndex == 0 && (
+                                      <Label htmlFor={`itemName-${boxIndex}-${itemIndex}`} className="text-xs">
+                                        Name*
+                                      </Label>
+                                    )}
                                     <ItemNameAutocomplete
                                       id={`itemName-${boxIndex}-${itemIndex}`}
                                       value={item.name || ""}
@@ -1803,9 +2027,11 @@ export default function AWBForm({ isEdit = false, awb }) {
 
                                   {/* Quantity */}
                                   <div className="col-span-2">
-                                    {itemIndex == 0 && <Label htmlFor={`itemQuantity-${boxIndex}-${itemIndex}`} className="text-xs">
-                                      Qty*
-                                    </Label>}
+                                    {itemIndex == 0 && (
+                                      <Label htmlFor={`itemQuantity-${boxIndex}-${itemIndex}`} className="text-xs">
+                                        Qty*
+                                      </Label>
+                                    )}
                                     <Input
                                       id={`itemQuantity-${boxIndex}-${itemIndex}`}
                                       type="number"
@@ -1821,9 +2047,11 @@ export default function AWBForm({ isEdit = false, awb }) {
 
                                   {/* Price */}
                                   <div className="col-span-2">
-                                    {itemIndex == 0 && <Label htmlFor={`itemPrice-${boxIndex}-${itemIndex}`} className="text-xs">
-                                      Price*
-                                    </Label>}
+                                    {itemIndex == 0 && (
+                                      <Label htmlFor={`itemPrice-${boxIndex}-${itemIndex}`} className="text-xs">
+                                        Price*
+                                      </Label>
+                                    )}
                                     <Input
                                       id={`itemPrice-${boxIndex}-${itemIndex}`}
                                       type="number"
@@ -1837,9 +2065,11 @@ export default function AWBForm({ isEdit = false, awb }) {
 
                                   {/* HSN Code */}
                                   <div className="col-span-2">
-                                    {itemIndex == 0 && <Label htmlFor={`hsnCode-${boxIndex}-${itemIndex}`} className="text-xs">
-                                      HSN
-                                    </Label>}
+                                    {itemIndex == 0 && (
+                                      <Label htmlFor={`hsnCode-${boxIndex}-${itemIndex}`} className="text-xs">
+                                        HSN
+                                      </Label>
+                                    )}
                                     <div className="flex gap-1">
                                       <Input
                                         id={`hsnCode-${boxIndex}-${itemIndex}`}
