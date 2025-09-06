@@ -41,8 +41,18 @@ const ShowName = ({ id }) => {
   useEffect(() => {
     const fetchClient = async () => {
       try {
-        const response = await axios.get(`/api/clients/id/${id}`);
-        const data = response.data;
+        let data = null;
+
+        // Try fetching from franchises API first
+        const franchiseRes = await axios.get(`/api/franchises/${id}`);
+        data = franchiseRes.data;
+
+        // If not found in franchise, fallback to clients API
+        if (!data || !data.name) {
+          const clientRes = await axios.get(`/api/clients/${id}`);
+          data = clientRes.data;
+        }
+
         setName(data?.name || "Unknown Client");
       } catch (err) {
         console.error("Error fetching client:", err);
@@ -104,8 +114,8 @@ export const adminColumns = [
       </span>
     ),
     cell: ({ row }) => {
-      const staffId = row.original.staffId;
-      return staffId !== "admin" ? <ShowName id={staffId} /> : <span>Admin</span>;
+      const refCode = row.original.refCode;
+      return refCode ? <ShowName id={refCode} /> : <span>Unknown</span>;
     },
   },
   {
@@ -183,7 +193,8 @@ export const adminColumns = [
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Deleting AWB with Tracking Number: <strong>{trackingNumber}</strong> cannot be undone.
+                  Deleting AWB with Tracking Number:{" "}
+                  <strong>{trackingNumber}</strong> cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
