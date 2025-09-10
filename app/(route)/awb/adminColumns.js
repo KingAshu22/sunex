@@ -102,7 +102,27 @@ export const adminColumns = [
         Tracking <ArrowUpDown className="ml-2 h-4 w-4" />
       </span>
     ),
+    cell: ({ row }) => {
+      const trackingNumber = row.original.trackingNumber;
+      const hasForwardingInfo =
+        row.original?.forwardingNumber?.length > 0 &&
+        row.original?.forwardingLink?.length > 0;
+
+      const handleClick = () => {
+        window.location.href = `/awb/${trackingNumber}`;
+      };
+
+      return (
+        <span
+          className={`cursor-pointer ${hasForwardingInfo ? "text-black" : "text-red-500"}`}
+          onClick={handleClick}
+        >
+          {trackingNumber}
+        </span>
+      );
+    },
   },
+
   {
     accessorKey: "staffId",
     header: ({ column }) => (
@@ -151,12 +171,6 @@ export const adminColumns = [
 
       return (
         <div className="flex gap-2">
-          <Button
-            className="bg-green-800"
-            onClick={() => router.push(`/awb/${trackingNumber}`)}
-          >
-            <Eye className="w-5 h-5" />
-          </Button>
           <Button
             className="bg-blue-400"
             onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}

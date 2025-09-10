@@ -79,6 +79,25 @@ export const csColumns = [
         Tracking <ArrowUpDown className="ml-2 h-4 w-4" />
       </span>
     ),
+    cell: ({ row }) => {
+      const trackingNumber = row.original.trackingNumber;
+      const hasForwardingInfo =
+        row.original?.forwardingNumber?.length > 0 &&
+        row.original?.forwardingLink?.length > 0;
+
+      const handleClick = () => {
+        window.location.href = `/awb/${trackingNumber}`;
+      };
+
+      return (
+        <span
+          className={`cursor-pointer ${hasForwardingInfo ? "text-black" : "text-red-500"}`}
+          onClick={handleClick}
+        >
+          {trackingNumber}
+        </span>
+      );
+    },
   },
   {
     accessorKey: "staffId",
@@ -127,32 +146,29 @@ export const csColumns = [
       const { trackingNumber } = row.original;
 
       return (
-        <div className="flex gap-2">
+        <div className="flex gap-1 text-[10px]">
           <Button
-            className="bg-green-800"
-            onClick={() => router.push(`/awb/${trackingNumber}`)}
-          >
-            <Eye className="w-5 h-5" />
-          </Button>
-          <Button
-            className="bg-blue-400"
-            onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}
-          >
-            <Plane className="w-5 h-5" />
-            <Barcode className="w-5 h-5" />
-          </Button>
-          <Button
+            className="p-1 bg-yellow-800"
             onClick={() => router.push(`/awb/update-track/${trackingNumber}`)}
           >
-            <LayoutDashboard className="w-5 h-5" />
+            Update
           </Button>
           <Button
+            className="p-1 bg-red-400"
+            onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}
+          >
+            Docs
+          </Button>
+          <Button
+            className="p-1 bg-blue-400"
             onClick={() => router.push(`/shipping-invoice/${trackingNumber}`)}
           >
-            <Plane className="w-5 h-5" />
+            Ship INV
           </Button>
-          <Button onClick={() => router.push(`/label/${trackingNumber}`)}>
-            <Barcode className="w-5 h-5" />
+          <Button
+            className="p-1 bg-purple-600"
+            onClick={() => router.push(`/label/${trackingNumber}`)}>
+            Label
           </Button>
         </div>
       );
