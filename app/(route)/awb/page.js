@@ -6,6 +6,7 @@ import { adminColumns } from "./adminColumns";
 import { HashLoader } from "react-spinners";
 import withAuth from "@/lib/withAuth";
 import { clientColumns } from "./clientColumns";
+import { csColumns } from "./csColumns";
 
 function AWBTable() {
   const [awbs, setAwbs] = useState([]);
@@ -60,8 +61,10 @@ function AWBTable() {
   return (
     <div className="container w-full px-4">
       {userType === "admin" || userType === "branch" ?
-        <DataTable columns={adminColumns} data={awbs} /> :
-        <DataTable columns={clientColumns} data={awbs} />
+        <DataTable columns={adminColumns} data={awbs} />
+        : userType === "Customer Service"
+        ? <DataTable columns={csColumns} data={awbs} />
+        : <DataTable columns={clientColumns} data={awbs} />
       }
     </div>
   );

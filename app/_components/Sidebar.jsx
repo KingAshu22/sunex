@@ -21,89 +21,66 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 export function AppSidebar() {
   const [userType, setUserType] = useState("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setUserType(localStorage?.getItem("userType"));
+      const storedType = localStorage.getItem("userType");
+      setUserType(storedType || "");
     }
-  });
+  }, []);
 
-  // Menu items
   const items = [
-    {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "New Booking",
-      url: "/awb/create",
-      icon: Plus,
-    },
-    {
-      title: "Show Bookings",
-      url: "/awb",
-      icon: Box,
-    },
-    // Add Clients menu item conditionally
+    ...(userType !== "Customer Service"
+      ? [
+          { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+          { title: "New Booking", url: "/awb/create", icon: Plus },
+        ]
+      : []),
+
+    { title: "Show Bookings", url: "/awb", icon: Box },
+
     ...(userType === "admin" || userType === "branch"
       ? [
-        {
-          title: "Customers",
-          url: "/customers",
-          icon: Contact,
-        },
-        {
-          title: "Clients",
-          url: "/clients",
-          icon: User,
-        },
-        {
-          title: "Franchise",
-          url: "/franchise",
-          icon: User,
-        },
-      ]
+          { title: "Customers", url: "/customers", icon: Contact },
+          { title: "Clients", url: "/clients", icon: User },
+          { title: "Franchise", url: "/franchise", icon: User },
+        ]
       : []),
+
     ...(userType === "franchise"
-      ? [
-        {
-          title: "Clients",
-          url: "/clients",
-          icon: User,
-        },
-      ]
+      ? [{ title: "Clients", url: "/clients", icon: User }]
       : []),
   ];
+
   return (
-    <>
-      <Sidebar collapsible="icon">
-        <SidebarHeader className="p-4 text-center">
-          <Sun />
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild className="py-8">
-                      <a href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-      </Sidebar>
-    </>
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="p-4 text-center">
+        <Sun />
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild className="py-8">
+                    <Link href={item.url} className="flex items-center space-x-2">
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
   );
 }

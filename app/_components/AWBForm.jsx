@@ -952,6 +952,8 @@ export default function AWBForm({ isEdit = false, awb }) {
                   comment: "",
                 },
               ],
+              ourBoxes: boxes,
+              vendorBoxes: boxes,
             }),
         // Add selected rate information if available
         ...(selectedRate && {
