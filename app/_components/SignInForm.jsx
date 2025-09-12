@@ -113,6 +113,8 @@ export default function SignInForm() {
               ? "branch"
               : data.franchise?.isBranch === "customerService"
                 ? "Customer Service"
+                : data.franchise?.isBranch === "pickup"
+                ? "pickup"
                 : "franchise"
           );
 
