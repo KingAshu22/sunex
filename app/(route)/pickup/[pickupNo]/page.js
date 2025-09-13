@@ -1,15 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import axios from "axios"
 import Link from "next/link"
+import html2canvas from "html2canvas"
+import jsPDF from "jspdf"
 
 export default function SinglePickupPage() {
   const { pickupNo } = useParams()
   const router = useRouter()
   const [pickup, setPickup] = useState(null)
   const [loading, setLoading] = useState(true)
+  const pdfRef = useRef()
 
   useEffect(() => {
     async function fetchPickup() {
@@ -39,6 +42,20 @@ export default function SinglePickupPage() {
         alert("Failed to delete pickup")
       }
     }
+  }
+
+  const handleDownloadPDF = () => {
+    const input = pdfRef.current
+
+    html2canvas(input, { scale: 2 }).then((canvas) => {
+      const imgData = canvas.toDataURL("image/png")
+      const pdf = new jsPDF("p", "mm", "a4")
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight)
+      pdf.save(`Pickup-${pickup.pickupNo}.pdf`)
+    })
   }
 
   if (loading) {
@@ -73,14 +90,26 @@ export default function SinglePickupPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        {/* Header */}
+      <div ref={pdfRef} className="bg-white rounded-lg shadow-md p-6">
+        {/* Company Header */}
+        <div className="text-center mb-6 border-b pb-4">
+          <h1 className="text-2xl font-bold text-blue-900">SunEx Services Private Limited</h1>
+          <p className="text-lg text-gray-700">International Courier & Cargo Services</p>
+        </div>
+
+        {/* Action Buttons */}
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Pickup Details</h1>
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">Pickup Details</h2>
             <p className="text-gray-600">Pickup #{pickup.pickupNo}</p>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={handleDownloadPDF}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium transition-colors"
+            >
+              Save as PDF
+            </button>
             <Link
               href={`/edit-pickup/${pickup.pickupNo}`}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors"
@@ -147,55 +176,65 @@ export default function SinglePickupPage() {
           </div>
         </div>
 
-        {/* Boxes Section */}
+        {/* Boxes Section - Tabular Format */}
         <div className="border-t pt-6">
           <h3 className="text-xl font-semibold text-gray-800 mb-4">Pickup Boxes</h3>
 
           {!pickup.pickupBoxes || pickup.pickupBoxes.length === 0 ? (
             <div className="text-center py-8 text-gray-500">No boxes recorded for this pickup.</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {pickup.pickupBoxes.map((box, boxIndex) => {
-                // Handle different box data structures
-                let boxNumber, items
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white border border-gray-300 rounded-lg">
+                <thead>
+                  <tr className="bg-blue-100 border-b">
+                    <th className="py-3 px-4 text-left font-semibold text-gray-800">Box #</th>
+                    <th className="py-3 px-4 text-left font-semibold text-gray-800">Item Name</th>
+                    <th className="py-3 px-4 text-left font-semibold text-gray-800">Quantity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pickup.pickupBoxes.map((box, boxIndex) => {
+                    let boxNumber, items
 
-                if (typeof box === "string") {
-                  // If box is just a string
-                  boxNumber = boxIndex + 1
-                  items = [{ itemName: box }]
-                } else if (box && typeof box === "object") {
-                  // If box is an object
-                  boxNumber = box.boxNumber || boxIndex + 1
-                  items = box.items || []
-                } else {
-                  boxNumber = boxIndex + 1
-                  items = []
-                }
+                    if (typeof box === "string") {
+                      boxNumber = boxIndex + 1
+                      items = [{ itemName: box, quantity: 1 }]
+                    } else if (box && typeof box === "object") {
+                      boxNumber = box.boxNumber || boxIndex + 1
+                      items = box.items || []
+                    } else {
+                      boxNumber = boxIndex + 1
+                      items = []
+                    }
 
-                return (
-                  <div key={boxIndex} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <h4 className="text-lg font-medium text-blue-800 mb-3">Box {boxNumber}</h4>
+                    if (items.length === 0) {
+                      return (
+                        <tr key={boxIndex} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4 font-medium text-gray-700">Box {boxNumber}</td>
+                          <td className="py-3 px-4 text-gray-500 italic">No items listed</td>
+                          <td className="py-3 px-4 text-gray-500">—</td>
+                        </tr>
+                      )
+                    }
 
-                    {items.length === 0 ? (
-                      <p className="text-gray-500 text-sm">No items listed</p>
-                    ) : (
-                      <ul className="space-y-1">
-                        {items.map((item, itemIndex) => {
-                          const itemName = item.itemName || item
-                          const quantity = item.quantity || 1
+                    return items.map((item, itemIndex) => {
+                      const itemName = item.itemName || item
+                      const quantity = item.quantity || 1
 
-                          return (
-                            <li key={itemIndex} className="text-gray-700 text-sm flex justify-between">
-                              <span>• {itemName}</span>
-                              <span className="text-blue-600 font-medium">Qty: {quantity}</span>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    )}
-                  </div>
-                )
-              })}
+                      // Only show box number on first row of each box
+                      const displayBoxNumber = itemIndex === 0 ? `Box ${boxNumber}` : ""
+
+                      return (
+                        <tr key={`${boxIndex}-${itemIndex}`} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4 font-medium text-gray-700">{displayBoxNumber}</td>
+                          <td className="py-3 px-4 text-gray-700">• {itemName}</td>
+                          <td className="py-3 px-4 text-blue-600 font-medium">Qty: {quantity}</td>
+                        </tr>
+                      )
+                    })
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

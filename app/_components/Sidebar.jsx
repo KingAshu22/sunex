@@ -1,13 +1,11 @@
 import {
-  Calendar,
   LayoutDashboard,
   User,
-  Search,
-  Settings,
-  Plus,
-  Sun,
   Box,
   Contact,
+  Plus,
+  Sun,
+  Truck,
 } from "lucide-react";
 
 import {
@@ -15,7 +13,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -35,28 +32,33 @@ export function AppSidebar() {
     }
   }, []);
 
-  const items = [
-    ...(userType !== "Customer Service"
-      ? [
-          { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-          { title: "New Booking", url: "/awb/create", icon: Plus },
-        ]
-      : []),
+  let items = [];
 
-    { title: "Show Bookings", url: "/awb", icon: Box },
+  if (userType === "pickup") {
+    // Show only Pickup menu
+    items = [{ title: "Pickup", url: "/pickup", icon: Truck }];
+  } else {
+    // Common item shown to most user types
+    items = [{ title: "Show Bookings", url: "/awb", icon: Box }];
 
-    ...(userType === "admin" || userType === "branch"
-      ? [
-          { title: "Customers", url: "/customers", icon: Contact },
-          { title: "Clients", url: "/clients", icon: User },
-          { title: "Franchise", url: "/franchise", icon: User },
-        ]
-      : []),
+    if (userType !== "Customer Service") {
+      items.unshift({ title: "Dashboard", url: "/dashboard", icon: LayoutDashboard });
+      items.unshift({ title: "New Booking", url: "/awb/create", icon: Plus });
+    }
 
-    ...(userType === "franchise"
-      ? [{ title: "Clients", url: "/clients", icon: User }]
-      : []),
-  ];
+    if (userType === "admin" || userType === "branch") {
+      items.push(
+        { title: "Customers", url: "/customers", icon: Contact },
+        { title: "Clients", url: "/clients", icon: User },
+        { title: "Franchise", url: "/franchise", icon: User },
+        { title: "Pickup", url: "/pickup", icon: Truck }
+      );
+    }
+
+    if (userType === "franchise") {
+      items.push({ title: "Clients", url: "/clients", icon: User });
+    }
+  }
 
   return (
     <Sidebar collapsible="icon">
