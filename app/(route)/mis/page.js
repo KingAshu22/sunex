@@ -1,99 +1,76 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import {
-  Package,
-  TrendingUp,
-  Search,
-  Download,
-  Eye,
-  ChevronUp,
-  ChevronDown,
-  CalendarIcon,
-  FileText,
-  Globe,
-  Users,
-  Building,
-} from "lucide-react"
-import { format } from "date-fns"
-
-import { Button } from "@/components/ui/button"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Download, FileText, Package, TrendingUp, Users, Search, ChevronUp, ChevronDown } from "lucide-react"
+import { format } from "date-fns"
 
 export default function AllAWBsMISPage() {
   const [awbs, setAwbs] = useState([])
-  const [filteredAwbs, setFilteredAwbs] = useState([])
   const [clients, setClients] = useState([])
+  const [franchises, setFranchises] = useState([])
+  const [clientOptions, setClientOptions] = useState([])
+  const [clientSearchTerm, setClientSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [clientFilter, setClientFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [serviceFilter, setServiceFilter] = useState("all")
+  const [countryFilter, setCountryFilter] = useState("all")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-
-  // Filter states
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterCountry, setFilterCountry] = useState("all")
-  const [filterService, setFilterService] = useState("all")
-  const [filterStatus, setFilterStatus] = useState("all")
-  const [filterClient, setFilterClient] = useState("all")
-  const [groupBy, setGroupBy] = useState("refCode") // refCode, sender, receiver
 
   // Date range states
   const [fromDate, setFromDate] = useState(null)
   const [toDate, setToDate] = useState(null)
-  const [datePickerOpen, setDatePickerOpen] = useState({ from: false, to: false })
 
-  // Sort states
+  // Sorting states
   const [sortColumn, setSortColumn] = useState("date")
   const [sortOrder, setSortOrder] = useState("desc")
 
   useEffect(() => {
-    fetchAllData()
+    fetchData()
   }, [])
 
-  useEffect(() => {
-    applyFiltersAndSort()
-  }, [
-    awbs,
-    searchTerm,
-    filterCountry,
-    filterService,
-    filterStatus,
-    filterClient,
-    fromDate,
-    toDate,
-    sortColumn,
-    sortOrder,
-  ])
-
-  const fetchAllData = async () => {
+  const fetchData = async () => {
     try {
       // Fetch all AWBs
       const awbResponse = await fetch("/api/awb")
       if (!awbResponse.ok) throw new Error("Failed to fetch AWB data")
       const awbData = await awbResponse.json()
 
-      // Fetch all clients
-      const clientResponse = await fetch("/api/clients")
-      if (!clientResponse.ok) throw new Error("Failed to fetch client data")
-      const clientData = await clientResponse.json()
+      // Fetch clients and franchises
+      const [clientsResponse, franchisesResponse] = await Promise.all([fetch("/api/clients"), fetch("/api/franchises")])
+
+      if (!clientsResponse.ok) throw new Error("Failed to fetch client data")
+      if (!franchisesResponse.ok) throw new Error("Failed to fetch franchise data")
+
+      const clientsData = await clientsResponse.json()
+      const franchisesData = await franchisesResponse.json()
 
       setAwbs(awbData)
-      setClients(clientData)
+      setClients(clientsData)
+      setFranchises(franchisesData)
+
+      const combinedOptions = [
+        ...clientsData.map((client) => ({
+          code: client.code,
+          name: client.name,
+          type: "client",
+        })),
+        ...franchisesData.map((franchise) => ({
+          code: franchise.code,
+          name: franchise.name,
+          type: "franchise",
+        })),
+      ]
+      setClientOptions(combinedOptions)
 
       // Set default date range based on AWB data
       if (awbData.length > 0) {
@@ -108,6 +85,16 @@ export default function AllAWBsMISPage() {
       setLoading(false)
       console.error(err)
     }
+  }
+
+  const getClientName = (refCode) => {
+    const client = clients.find((c) => c.code === refCode)
+    if (client) return client.name
+
+    const franchise = franchises.find((f) => f.code === refCode)
+    if (franchise) return franchise.name
+
+    return refCode || "Unknown"
   }
 
   // Calculate dimensional weight (L x B x H / 5000)
@@ -138,183 +125,6 @@ export default function AllAWBsMISPage() {
     return deliveredStatus ? deliveredStatus.timestamp : null
   }
 
-  // Get client name by refCode
-  const getClientName = (refCode) => {
-    const client = clients.find((c) => c.code === refCode)
-    return client?.name || refCode || "Unknown"
-  }
-
-  // Create expanded rows for each box
-  const createExpandedRows = (awbs) => {
-    const expandedRows = []
-
-    awbs.forEach((awb) => {
-      if (!awb.boxes || awb.boxes.length === 0) {
-        expandedRows.push({
-          ...awb,
-          boxIndex: null,
-          box: null,
-          isFirstRow: true,
-          totalBoxes: 0,
-        })
-      } else {
-        awb.boxes.forEach((box, index) => {
-          expandedRows.push({
-            ...awb,
-            boxIndex: index,
-            box: box,
-            isFirstRow: index === 0,
-            totalBoxes: awb.boxes.length,
-          })
-        })
-      }
-    })
-
-    return expandedRows
-  }
-
-  // Group AWBs based on selected grouping
-  const groupAwbs = (awbs) => {
-    const grouped = {}
-
-    awbs.forEach((awb) => {
-      let groupKey = ""
-
-      switch (groupBy) {
-        case "refCode":
-          groupKey = awb.refCode || "No Client Code"
-          break
-        case "sender":
-          groupKey = awb.sender?.name || "Unknown Sender"
-          break
-        case "receiver":
-          groupKey = awb.receiver?.name || "Unknown Receiver"
-          break
-        default:
-          groupKey = awb.refCode || awb.sender?.name || awb.receiver?.name || "Ungrouped"
-      }
-
-      if (!grouped[groupKey]) {
-        grouped[groupKey] = []
-      }
-      grouped[groupKey].push(awb)
-    })
-
-    return grouped
-  }
-
-  const applyFiltersAndSort = () => {
-    let filtered = [...awbs]
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (awb) =>
-          awb.trackingNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          awb.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          awb.receiver?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          awb.receiver?.country?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          awb.sender?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          awb.forwardingNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          awb.refCode?.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    }
-
-    // Country filter
-    if (filterCountry !== "all") {
-      filtered = filtered.filter((awb) => awb.receiver?.country === filterCountry)
-    }
-
-    // Service filter
-    if (filterService !== "all") {
-      filtered = filtered.filter((awb) => awb?.rateInfo?.courier === filterService)
-    }
-
-    // Status filter
-    if (filterStatus !== "all") {
-      filtered = filtered.filter((awb) => {
-        const latestStatus = awb.parcelStatus?.[awb.parcelStatus.length - 1]?.status
-        return latestStatus === filterStatus
-      })
-    }
-
-    // Client filter
-    if (filterClient !== "all") {
-      filtered = filtered.filter((awb) => awb.refCode === filterClient)
-    }
-
-    // Custom date range filter
-    if (fromDate && toDate) {
-      filtered = filtered.filter((awb) => {
-        const awbDate = new Date(awb.date)
-        const from = new Date(fromDate)
-        const to = new Date(toDate)
-        from.setHours(0, 0, 0, 0)
-        to.setHours(23, 59, 59, 999)
-        return awbDate >= from && awbDate <= to
-      })
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      let aValue, bValue
-
-      switch (sortColumn) {
-        case "date":
-          aValue = new Date(a.date).getTime()
-          bValue = new Date(b.date).getTime()
-          break
-        case "trackingNumber":
-          aValue = a.trackingNumber || ""
-          bValue = b.trackingNumber || ""
-          break
-        case "refCode":
-          aValue = a.refCode || ""
-          bValue = b.refCode || ""
-          break
-        case "sender":
-          aValue = a.sender?.name || ""
-          bValue = b.sender?.name || ""
-          break
-        case "receiver":
-          aValue = a.receiver?.name || ""
-          bValue = b.receiver?.name || ""
-          break
-        case "country":
-          aValue = a.receiver?.country || ""
-          bValue = b.receiver?.country || ""
-          break
-        case "service":
-          aValue = a?.rateInfo?.courier || ""
-          bValue = b?.rateInfo?.courier || ""
-          break
-        case "totalWeight":
-          aValue = calculateTotalWeight(a.boxes)
-          bValue = calculateTotalWeight(b.boxes)
-          break
-        case "status":
-          aValue = a.parcelStatus?.[a.parcelStatus.length - 1]?.status || ""
-          bValue = b.parcelStatus?.[b.parcelStatus.length - 1]?.status || ""
-          break
-        case "value":
-          aValue = Number.parseFloat(a?.rateInfo?.totalWithGST) || 0
-          bValue = Number.parseFloat(b?.rateInfo?.totalWithGST) || 0
-          break
-        default:
-          aValue = new Date(a.date).getTime()
-          bValue = new Date(b.date).getTime()
-      }
-
-      if (sortOrder === "asc") {
-        return aValue > bValue ? 1 : -1
-      } else {
-        return aValue < bValue ? 1 : -1
-      }
-    })
-
-    setFilteredAwbs(filtered)
-  }
-
   const handleSort = (column) => {
     if (sortColumn === column) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc")
@@ -334,6 +144,156 @@ export default function AllAWBsMISPage() {
       <ChevronDown className="h-4 w-4 text-blue-600" />
     )
   }
+
+  // Create expanded rows for each box
+  const createExpandedRows = (awbs) => {
+    const expandedRows = []
+
+    awbs.forEach((awb) => {
+      if (!awb.boxes || awb.boxes.length === 0) {
+        expandedRows.push({
+          ...awb,
+          boxIndex: null,
+          box: null,
+          isFirstRow: true,
+          totalBoxes: 0,
+        })
+      } else {
+        awb.boxes.forEach((box, index) => {
+          const dimensionalWeight = calculateDimensionalWeight(box.length, box.breadth, box.height)
+          const chargeableWeight = calculateChargeableWeight(box.actualWeight, dimensionalWeight)
+
+          expandedRows.push({
+            ...awb,
+            boxIndex: index,
+            box: {
+              ...box,
+              dimensionalWeight,
+              chargeableWeight,
+            },
+            isFirstRow: index === 0,
+            totalBoxes: awb.boxes.length,
+          })
+        })
+      }
+    })
+
+    return expandedRows
+  }
+
+  const filteredAwbs = useMemo(() => {
+    let filtered = [...awbs]
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (awb) =>
+          awb.trackingNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          awb.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          awb.receiver?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          awb.receiver?.country?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          awb.sender?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          awb.forwardingNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          awb.refCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          getClientName(awb.refCode)?.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+    }
+
+    // Client filter
+    if (clientFilter !== "all") {
+      filtered = filtered.filter((awb) => awb.refCode === clientFilter)
+    }
+
+    // Status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((awb) => {
+        const latestStatus = awb.parcelStatus?.[awb.parcelStatus.length - 1]?.status
+        return latestStatus?.toLowerCase() === statusFilter.toLowerCase()
+      })
+    }
+
+    // Service filter
+    if (serviceFilter !== "all") {
+      filtered = filtered.filter((awb) => awb?.rateInfo?.courier === serviceFilter)
+    }
+
+    // Country filter
+    if (countryFilter !== "all") {
+      filtered = filtered.filter((awb) => awb.receiver?.country === countryFilter)
+    }
+
+    // Date range filter
+    if (fromDate) {
+      filtered = filtered.filter((awb) => new Date(awb.date) >= fromDate)
+    }
+    if (toDate) {
+      filtered = filtered.filter((awb) => new Date(awb.date) <= toDate)
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      let aValue, bValue
+
+      switch (sortColumn) {
+        case "date":
+          aValue = new Date(a.date).getTime()
+          bValue = new Date(b.date).getTime()
+          break
+        case "refCode":
+          aValue = getClientName(a.refCode)?.toLowerCase() || ""
+          bValue = getClientName(b.refCode)?.toLowerCase() || ""
+          break
+        case "sender":
+          aValue = a.sender?.name?.toLowerCase() || ""
+          bValue = b.sender?.name?.toLowerCase() || ""
+          break
+        case "receiver":
+          aValue = a.receiver?.name?.toLowerCase() || ""
+          bValue = b.receiver?.name?.toLowerCase() || ""
+          break
+        case "country":
+          aValue = a.receiver?.country?.toLowerCase() || ""
+          bValue = b.receiver?.country?.toLowerCase() || ""
+          break
+        case "service":
+          aValue = a?.rateInfo?.courier?.toLowerCase() || ""
+          bValue = b?.rateInfo?.courier?.toLowerCase() || ""
+          break
+        case "status":
+          aValue = a.parcelStatus?.[a.parcelStatus.length - 1]?.status?.toLowerCase() || ""
+          bValue = b.parcelStatus?.[b.parcelStatus.length - 1]?.status?.toLowerCase() || ""
+          break
+        case "value":
+          aValue = Number.parseFloat(a?.rateInfo?.totalWithGST) || 0
+          bValue = Number.parseFloat(b?.rateInfo?.totalWithGST) || 0
+          break
+        default:
+          aValue = new Date(a.date).getTime()
+          bValue = new Date(b.date).getTime()
+      }
+
+      if (sortOrder === "asc") {
+        return aValue > bValue ? 1 : -1
+      } else {
+        return aValue < bValue ? 1 : -1
+      }
+    })
+
+    return filtered
+  }, [
+    awbs,
+    searchTerm,
+    clientFilter,
+    statusFilter,
+    serviceFilter,
+    countryFilter,
+    fromDate,
+    toDate,
+    sortColumn,
+    sortOrder,
+    clients,
+    franchises,
+  ])
 
   const getUniqueCountries = () => {
     const countries = awbs.map((awb) => awb.receiver?.country).filter(Boolean)
@@ -355,11 +315,6 @@ export default function AllAWBsMISPage() {
     return [...new Set(statuses)]
   }
 
-  const getUniqueClients = () => {
-    const refCodes = awbs.map((awb) => awb.refCode).filter(Boolean)
-    return [...new Set(refCodes)]
-  }
-
   const getStatusBadgeVariant = (status) => {
     switch (status?.toLowerCase()) {
       case "delivered":
@@ -379,39 +334,13 @@ export default function AllAWBsMISPage() {
     const totalBoxes = filteredAwbs.reduce((sum, awb) => sum + (awb.boxes?.length || 0), 0)
     const totalWeight = filteredAwbs.reduce((sum, awb) => sum + calculateTotalWeight(awb.boxes), 0)
     const uniqueCountries = getUniqueCountries().length
-    const uniqueClients = getUniqueClients().length
+    const uniqueClients = [...new Set(filteredAwbs.map((awb) => awb.refCode))].length
     const deliveredCount = filteredAwbs.filter((awb) => {
       const latestStatus = awb.parcelStatus?.[awb.parcelStatus.length - 1]?.status
       return latestStatus?.toLowerCase() === "delivered"
     }).length
 
     return { totalShipments, totalValue, totalBoxes, totalWeight, uniqueCountries, uniqueClients, deliveredCount }
-  }
-
-  const getCountryStats = () => {
-    const countryStats = {}
-    filteredAwbs.forEach((awb) => {
-      const country = awb.receiver?.country
-      if (country) {
-        if (!countryStats[country]) {
-          countryStats[country] = {
-            count: 0,
-            value: 0,
-            weight: 0,
-          }
-        }
-        countryStats[country].count += 1
-        countryStats[country].value += Number.parseFloat(awb?.rateInfo?.totalWithGST) || 0
-        countryStats[country].weight += calculateTotalWeight(awb.boxes)
-      }
-    })
-
-    return Object.entries(countryStats)
-      .map(([country, stats]) => ({
-        country,
-        ...stats,
-      }))
-      .sort((a, b) => b.count - a.count)
   }
 
   const exportToCSV = () => {
@@ -707,6 +636,11 @@ export default function AllAWBsMISPage() {
     }
   }
 
+  const filteredClientOptions = useMemo(() => {
+    if (!clientSearchTerm) return clientOptions
+    return clientOptions.filter((option) => option.name.toLowerCase().includes(clientSearchTerm.toLowerCase()))
+  }, [clientOptions, clientSearchTerm])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -721,321 +655,179 @@ export default function AllAWBsMISPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Alert className="max-w-md">
-          <AlertDescription className="text-red-500">{error}</AlertDescription>
-        </Alert>
+        <div className="max-w-md">
+          <div className="text-red-500">{error}</div>
+        </div>
       </div>
     )
   }
 
-  const stats = calculateStats()
-  const expandedRows = createExpandedRows(filteredAwbs)
-  const countryStats = getCountryStats()
-  const groupedAwbs = groupAwbs(filteredAwbs)
-
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">All AWBs - MIS Dashboard</h1>
-          <p className="text-muted-foreground">
-            Comprehensive view of all shipments | Total: {stats.totalShipments} shipments
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">All AWBs - Management Information System</h1>
+          <p className="text-muted-foreground">Comprehensive overview of all Air Waybills</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={exportToCSV} className="w-fit">
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
-          <Button onClick={exportToPDF} variant="outline" className="w-fit bg-white text-black">
-            <FileText className="mr-2 h-4 w-4" />
+          <Button onClick={exportToPDF} variant="outline" className="flex items-center gap-2 bg-transparent">
+            <FileText className="h-4 w-4" />
             Export PDF
+          </Button>
+          <Button onClick={exportToCSV} className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Export CSV
           </Button>
         </div>
       </div>
 
-      {/* Date Range Selection */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-900">
-            <CalendarIcon className="h-5 w-5" />
-            Date Range Filter
-          </CardTitle>
-          <CardDescription className="text-blue-700">Select custom date range for filtering shipments</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            <div>
-              <Label htmlFor="from-date" className="text-sm font-medium text-blue-900">
-                From Date
-              </Label>
-              <Popover
-                open={datePickerOpen.from}
-                onOpenChange={(open) => setDatePickerOpen((prev) => ({ ...prev, from: open }))}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal border-blue-200 hover:border-blue-300 bg-white text-black"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4 text-blue-600" />
-                    {fromDate ? format(fromDate, "PPP") : "Select start date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={fromDate || undefined}
-                    onSelect={(date) => {
-                      setFromDate(date || null)
-                      setDatePickerOpen((prev) => ({ ...prev, from: false }))
-                    }}
-                    disabled={(date) => (toDate ? date > toDate : false)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div>
-              <Label htmlFor="to-date" className="text-sm font-medium text-blue-900">
-                To Date
-              </Label>
-              <Popover
-                open={datePickerOpen.to}
-                onOpenChange={(open) => setDatePickerOpen((prev) => ({ ...prev, to: open }))}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal border-blue-200 hover:border-blue-300 bg-white text-black"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4 text-blue-600" />
-                    {toDate ? format(toDate, "PPP") : "Select end date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={toDate || undefined}
-                    onSelect={(date) => {
-                      setToDate(date || null)
-                      setDatePickerOpen((prev) => ({ ...prev, to: false }))
-                    }}
-                    disabled={(date) => (fromDate ? date < fromDate : false)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (awbs.length > 0) {
-                    const dates = awbs.map((awb) => new Date(awb.date)).sort((a, b) => a.getTime() - b.getTime())
-                    setFromDate(dates[0])
-                    setToDate(dates[dates.length - 1])
-                  }
-                }}
-                className="border-blue-200 text-blue-700 hover:bg-blue-50 bg-white"
-              >
-                Reset to All
-              </Button>
-              <Button
-                onClick={() => {
-                  const today = new Date()
-                  const thirtyDaysAgo = new Date()
-                  thirtyDaysAgo.setDate(today.getDate() - 30)
-                  setFromDate(thirtyDaysAgo)
-                  setToDate(today)
-                }}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Last 30 Days
-              </Button>
-            </div>
-          </div>
-
-          {fromDate && toDate && (
-            <div className="mt-4 p-3 bg-blue-100 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800">
-                <strong>Selected Range:</strong> {format(fromDate, "PPP")} to {format(toDate, "PPP")}
-                <span className="ml-2 text-blue-600">({filteredAwbs.length} shipments)</span>
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Shipments</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalShipments}</div>
+            <div className="text-2xl font-bold">{calculateStats().totalShipments}</div>
+            <p className="text-xs text-muted-foreground">Active shipments</p>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Value</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">
-              ₹
-              {stats.totalValue.toLocaleString("en-IN", {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              })}
-            </div>
+            <div className="text-2xl font-bold">₹{calculateStats().totalValue.toLocaleString("en-IN")}</div>
+            <p className="text-xs text-muted-foreground">Including GST</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Boxes</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalBoxes}</div>
-          </CardContent>
-        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Weight</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{stats.totalWeight.toFixed(0)} kg</div>
+            <div className="text-2xl font-bold">{calculateStats().totalWeight.toFixed(1)} kg</div>
+            <p className="text-xs text-muted-foreground">Chargeable weight</p>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Countries Served</CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.uniqueCountries}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
+            <CardTitle className="text-sm font-medium">Countries</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.uniqueClients}</div>
+            <div className="text-2xl font-bold">{calculateStats().uniqueCountries}</div>
+            <p className="text-xs text-muted-foreground">Destinations served</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs for different views */}
-      <Tabs defaultValue="table" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="table">Detailed Table</TabsTrigger>
-          <TabsTrigger value="countries">Countries Map</TabsTrigger>
-          <TabsTrigger value="groups">Grouped View</TabsTrigger>
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Filters & Search</CardTitle>
+          <CardDescription>Filter and search through your AWB data</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="search">Search</Label>
+              <Input
+                id="search"
+                placeholder="Search AWBs, clients, tracking numbers..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="client-filter">Filter by Client</Label>
+              <div className="relative">
+                <Select value={clientFilter} onValueChange={setClientFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select client or franchise" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="p-2">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search clients/franchises..."
+                          value={clientSearchTerm}
+                          onChange={(e) => setClientSearchTerm(e.target.value)}
+                          className="pl-8"
+                        />
+                      </div>
+                    </div>
+                    <SelectItem value="all">All Clients</SelectItem>
+                    {filteredClientOptions.map((option) => (
+                      <SelectItem key={`${option.type}-${option.code}`} value={option.code}>
+                        {option.name} ({option.type})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status-filter">Filter by Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  {getUniqueStatuses().map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="date-from">Date From</Label>
+              <Input
+                id="date-from"
+                type="date"
+                value={fromDate ? format(fromDate, "yyyy-MM-dd") : ""}
+                onChange={(e) => setFromDate(e.target.value ? new Date(e.target.value) : null)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="date-to">Date To</Label>
+              <Input
+                id="date-to"
+                type="date"
+                value={toDate ? format(toDate, "yyyy-MM-dd") : ""}
+                onChange={(e) => setToDate(e.target.value ? new Date(e.target.value) : null)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="detailed" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-1">
+          <TabsTrigger value="detailed">Detailed Table</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="table" className="space-y-4">
-          {/* Filters */}
+        <TabsContent value="detailed" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Filters & Search</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div>
-                  <Label htmlFor="search">Search</Label>
-                  <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="search"
-                      placeholder="Search tracking, client, receiver..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="client">Client</Label>
-                  <Select value={filterClient} onValueChange={setFilterClient}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Clients</SelectItem>
-                      {getUniqueClients().map((refCode) => (
-                        <SelectItem key={refCode} value={refCode}>
-                          {getClientName(refCode)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="country">Country</Label>
-                  <Select value={filterCountry} onValueChange={setFilterCountry}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Countries</SelectItem>
-                      {getUniqueCountries().map((country) => (
-                        <SelectItem key={country} value={country}>
-                          {country}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="service">Service</Label>
-                  <Select value={filterService} onValueChange={setFilterService}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Services</SelectItem>
-                      {getUniqueServices().map((service) => (
-                        <SelectItem key={service} value={service}>
-                          {service}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      {getUniqueStatuses().map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* AWB Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                All Shipments ({filteredAwbs.length} shipments, {expandedRows.length} rows)
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                AWB Details
               </CardTitle>
               <CardDescription>Complete view of all AWBs - Each box shown as separate row</CardDescription>
             </CardHeader>
@@ -1064,7 +856,10 @@ export default function AllAWBsMISPage() {
                           {getSortIcon("refCode")}
                         </Button>
                       </TableHead>
-                      <TableHead>Trk No</TableHead>
+                      <TableHead>AWB No</TableHead>
+                      <TableHead>CNote No</TableHead>
+                      <TableHead>CNote Vendor</TableHead>
+                      <TableHead>Fwd No</TableHead>
                       <TableHead>
                         <Button
                           variant="ghost"
@@ -1134,203 +929,97 @@ export default function AllAWBsMISPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {expandedRows.slice(0, 100).map((row, index) => {
-                      const latestStatus = row.parcelStatus?.[row.parcelStatus.length - 1]
-                      const totalWeight = calculateTotalWeight(row.boxes)
+                    {createExpandedRows(filteredAwbs)
+                      .slice(0, 100)
+                      .map((row, index) => {
+                        const latestStatus = row.parcelStatus?.[row.parcelStatus.length - 1]
+                        const totalWeight = calculateTotalWeight(row.boxes)
 
-                      const isFirstRow = row.isFirstRow
-                      const rowSpan = row.totalBoxes || 1
+                        const isFirstRow = row.isFirstRow
+                        const rowSpan = row.totalBoxes || 1
 
-                      return (
-                        <TableRow
-                          key={`${row._id}-${row.boxIndex || 0}`}
-                          className={row.boxIndex !== null && row.boxIndex > 0 ? "border-t-0" : ""}
-                        >
-                          {isFirstRow && (
-                            <>
-                              <TableCell rowSpan={rowSpan}>{new Date(row.date).toLocaleDateString()}</TableCell>
-                              <TableCell rowSpan={rowSpan} className="font-medium text-blue-600">
-                                {getClientName(row.refCode)}
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan} className="font-medium">
-                                {row.trackingNumber || "N/A"}
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan}>{row.sender?.name || "N/A"}</TableCell>
-                              <TableCell rowSpan={rowSpan}>{row.receiver?.name || "N/A"}</TableCell>
-                              <TableCell rowSpan={rowSpan}>{row.receiver?.country || "N/A"}</TableCell>
-                              <TableCell rowSpan={rowSpan} className="uppercase">
-                                {row?.rateInfo?.courier}
-                              </TableCell>
-                            </>
-                          )}
-
-                          <TableCell className="text-center">
-                            {row.box ? (
-                              <Badge variant="outline">{row.boxIndex + 1}</Badge>
-                            ) : (
-                              <span className="text-gray-400">-</span>
+                        return (
+                          <TableRow
+                            key={`${row._id}-${row.boxIndex || 0}`}
+                            className={row.boxIndex !== null && row.boxIndex > 0 ? "border-t-0" : ""}
+                          >
+                            {isFirstRow && (
+                              <>
+                                <TableCell rowSpan={rowSpan}>{new Date(row.date).toLocaleDateString("en-IN")}</TableCell>
+                                <TableCell rowSpan={rowSpan} className="font-medium text-blue-600">
+                                  {getClientName(row.refCode)}
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="font-medium">
+                                  <a href={`/awb/${row.trackingNumber}`}>{row.trackingNumber || "N/A"}</a>
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="font-medium">
+                                  <a href={`/shipping-invoice/${row?.trackingNumber}`}>{row?.cNoteNumber || "N/A"}</a>
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="font-medium">
+                                  {row?.cNoteVendorName || "N/A"}
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="font-medium">
+                                  <a href={`/track/${row?.trackingNumber}`}>{row?.forwardingNumber || "N/A"}</a>
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan}>{row.sender?.name || "N/A"}</TableCell>
+                                <TableCell rowSpan={rowSpan}>{row.receiver?.name || "N/A"}</TableCell>
+                                <TableCell rowSpan={rowSpan}>{row.receiver?.country || "N/A"}</TableCell>
+                                <TableCell rowSpan={rowSpan} className="uppercase">
+                                  {row?.rateInfo?.courier}
+                                </TableCell>
+                              </>
                             )}
-                          </TableCell>
-                          <TableCell className="text-center font-medium">
-                            {row.box
-                              ? `${row.box.length || 0}x${row.box.breadth || 0}x${row.box.height || 0}`
-                              : totalWeight.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-center font-medium">
-                            {row.box
-                              ? (Number.parseFloat(row.box.actualWeight?.toString()) || 0).toFixed(2)
-                              : totalWeight.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-center font-medium">
-                            {row.box
-                              ? (Number.parseFloat(row.box.dimensionalWeight?.toString()) || 0).toFixed(2)
-                              : totalWeight.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-center font-medium">
-                            {row.box
-                              ? (Number.parseFloat(row.box.chargeableWeight?.toString()) || 0).toFixed(2)
-                              : totalWeight.toFixed(2)}
-                          </TableCell>
 
-                          {isFirstRow && (
-                            <>
-                              <TableCell rowSpan={rowSpan}>
-                                <Badge variant={getStatusBadgeVariant(latestStatus?.status || "")}>
-                                  {latestStatus?.status || "Unknown"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan} className="font-bold">
-                                ₹
-                                {(Number.parseFloat(row?.rateInfo?.totalWithGST) || 0).toLocaleString("en-IN", {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan}>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                      <span className="sr-only">Open menu</span>
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                    <DropdownMenuItem
-                                      onClick={() => navigator.clipboard.writeText(row.trackingNumber || "")}
-                                    >
-                                      Copy tracking number
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem>View details</DropdownMenuItem>
-                                    <DropdownMenuItem>Track shipment</DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
-                            </>
-                          )}
-                        </TableRow>
-                      )
-                    })}
+                            <TableCell className="text-center">
+                              {row.box ? (
+                                <Badge variant="outline">{row.boxIndex + 1}</Badge>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center font-medium">
+                              {row.box
+                                ? `${row.box.length || 0}x${row.box.breadth || 0}x${row.box.height || 0}`
+                                : totalWeight.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-center font-medium">
+                              {row.box
+                                ? (Number.parseFloat(row.box.actualWeight?.toString()) || 0).toFixed(2)
+                                : totalWeight.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-center font-medium">
+                              {row.box
+                                ? (Number.parseFloat(row.box.dimensionalWeight?.toString()) || 0).toFixed(2)
+                                : totalWeight.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-center font-medium">
+                              {row.box
+                                ? (Number.parseFloat(row.box.chargeableWeight?.toString()) || 0).toFixed(2)
+                                : totalWeight.toFixed(2)}
+                            </TableCell>
+
+                            {isFirstRow && (
+                              <>
+                                <TableCell rowSpan={rowSpan}>
+                                  <Badge variant={getStatusBadgeVariant(latestStatus?.status || "")}>
+                                    {latestStatus?.status || "Unknown"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="text-center font-medium">
+                                  ₹{(Number.parseFloat(row?.rateInfo?.totalWithGST) || 0).toFixed(2)}
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan}>
+                                  <Button variant="outline" size="sm">
+                                    View
+                                  </Button>
+                                </TableCell>
+                              </>
+                            )}
+                          </TableRow>
+                        )
+                      })}
                   </TableBody>
                 </Table>
-              </div>
-              {expandedRows.length > 100 && (
-                <div className="mt-4 text-center text-sm text-muted-foreground">
-                  Showing first 100 records. Total: {expandedRows.length} records.
-                </div>
-              )}
-              {expandedRows.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No shipments found matching your criteria.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="countries" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Countries Served
-              </CardTitle>
-              <CardDescription>Geographic distribution of shipments</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {countryStats.map((country, index) => (
-                  <Card key={country.country} className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold">{country.country}</h3>
-                        <p className="text-sm text-muted-foreground">{country.count} shipments</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold">₹{country.value.toLocaleString("en-IN")}</p>
-                        <p className="text-sm text-muted-foreground">{country.weight.toFixed(1)} kg</p>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="groups" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Grouped View
-              </CardTitle>
-              <CardDescription>
-                <div className="flex items-center gap-4">
-                  <span>Group shipments by:</span>
-                  <Select value={groupBy} onValueChange={setGroupBy}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="refCode">Client Code</SelectItem>
-                      <SelectItem value="sender">Sender</SelectItem>
-                      <SelectItem value="receiver">Receiver</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Object.entries(groupedAwbs).map(([groupKey, groupAwbs]) => {
-                  const groupStats = {
-                    count: groupAwbs.length,
-                    value: groupAwbs.reduce(
-                      (sum, awb) => sum + (Number.parseFloat(awb?.rateInfo?.totalWithGST) || 0),
-                      0,
-                    ),
-                    weight: groupAwbs.reduce((sum, awb) => sum + calculateTotalWeight(awb.boxes), 0),
-                  }
-
-                  return (
-                    <Card key={groupKey} className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold text-lg">{groupKey}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {groupStats.count} shipments • {groupStats.weight.toFixed(1)} kg
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-lg">₹{groupStats.value.toLocaleString("en-IN")}</p>
-                          <Badge variant="outline">{groupStats.count} AWBs</Badge>
-                        </div>
-                      </div>
-                    </Card>
-                  )
-                })}
               </div>
             </CardContent>
           </Card>

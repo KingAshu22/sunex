@@ -292,55 +292,35 @@ function Dashboard() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <motion.div {...fadeUp} className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">
-            Welcome back, <span className="text-[#E31E24]">{user.name || "User"}</span>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Dashboard overview for {user.userType ? user.userType.toUpperCase() : "USER"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            className={`px-3 py-1.5 rounded border text-sm ${rangeDays === 30 ? "bg-[#E31E24] text-white" : "bg-white"}`}
-            onClick={() => setRangeDays(30)}
-          >
-            Last 30 days
-          </button>
-          <button
-            className={`px-3 py-1.5 rounded border text-sm ${rangeDays === 90 ? "bg-[#E31E24] text-white" : "bg-white"}`}
-            onClick={() => setRangeDays(90)}
-          >
-            Last 90 days
-          </button>
-          <button
-            className={`px-3 py-1.5 rounded border text-sm ${rangeDays === 365 ? "bg-[#E31E24] text-white" : "bg-white"}`}
-            onClick={() => setRangeDays(365)}
-          >
-            Last 365 days
-          </button>
-        </div>
-      </motion.div>
+  <div className="container mx-auto px-4 py-8">
+    <motion.div {...fadeUp} className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <div>
+        <h1 className="text-3xl font-bold">
+          Welcome back, <span className="text-[#E31E24]">{user.name || "User"}</span>
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Dashboard overview for {user.userType ? user.userType.toUpperCase() : "USER"}
+        </p>
+      </div>
+    </motion.div>
 
-      {/* KPI Cards */}
-      <motion.div
-        {...fadeUp}
-        className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${(localStorage.getItem("userType") === "admin" ||
-          localStorage.getItem("userType") === "branch")
-          ? "xl:grid-cols-6"
-          : "xl:grid-cols-4"
-          } gap-4 mb-8`}
-      >
-        <KPI
-          title="Total Shipments"
-          value={analytics.total}
-          accent="from-rose-500 to-pink-500"
-        />
+    {(user.userType === "admin" || user.userType === "branch" || user.userType === "franchise") && (
+      <>
+        {/* KPI Cards */}
+        <motion.div
+          {...fadeUp}
+          className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${(user.userType === "admin" || user.userType === "branch")
+            ? "xl:grid-cols-6"
+            : "xl:grid-cols-4"
+            } gap-4 mb-8`}
+        >
+          <KPI
+            title="Total Shipments"
+            value={analytics.total}
+            accent="from-rose-500 to-pink-500"
+          />
 
-        {(localStorage.getItem("userType") === "admin" ||
-          localStorage.getItem("userType") === "branch") && (
+          {(user.userType === "admin" || user.userType === "branch") && (
             <KPI
               title="Forwarding Pending"
               value={analytics.totalForwarding}
@@ -348,19 +328,19 @@ function Dashboard() {
             />
           )}
 
-        <KPI
-          title="Total Boxes"
-          value={analytics.totalBoxes}
-          accent="from-orange-500 to-red-500"
-        />
+          <KPI
+            title="Total Boxes"
+            value={analytics.totalBoxes}
+            accent="from-orange-500 to-red-500"
+          />
 
-        <KPI
-          title="Top Destination"
-          value={analytics.topDest?.[0]?.country || "—"}
-          accent="from-blue-500 to-indigo-500"
-        />
-        {(localStorage.getItem("userType") === "admin" ||
-          localStorage.getItem("userType") === "branch") && (
+          <KPI
+            title="Top Destination"
+            value={analytics.topDest?.[0]?.country || "—"}
+            accent="from-blue-500 to-indigo-500"
+          />
+
+          {(user.userType === "admin" || user.userType === "branch") && (
             <KPI
               title="Revenue"
               value={niceCurrency(analytics.totalRevenue, currency)}
@@ -368,124 +348,129 @@ function Dashboard() {
             />
           )}
 
-        <KPI
-          title="Countries Served"
-          value={analytics.uniqueCountries}
-          accent="from-green-500 to-emerald-600"
-        />
-      </motion.div>
-
-      {/* Optional admin tiles (hidden if count is null) */}
-      {user.userType === "admin" && (clientCount !== null || franchiseCount !== null) && (
-        <motion.div {...fadeUp} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          {clientCount !== null && <KPI title="Total Clients" value={clientCount} accent="from-indigo-500 to-blue-600" />}
-          {franchiseCount !== null && <KPI title="Total Branches/Franchises" value={franchiseCount} accent="from-teal-500 to-emerald-600" />}
+          <KPI
+            title="Countries Served"
+            value={analytics.uniqueCountries}
+            accent="from-green-500 to-emerald-600"
+          />
         </motion.div>
-      )}
 
-      {/* Charts */}
-      <motion.div
-        {...fadeUp}
-        className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8"
-      >
-        <Card className="col-span-1 xl:col-span-2">
-          <CardHeader>
-            <CardTitle>Shipments & Revenue (Monthly)</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={analytics.timeSeries}>
-                <defs>
-                  <linearGradient id="colorShip" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#E31E24" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#E31E24" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis yAxisId="left" orientation="left" allowDecimals={false} />
-                <YAxis yAxisId="right" orientation="right" hide />
-                <Tooltip formatter={(v, n) => (n === "revenue" ? niceCurrency(v, currency) : v)} />
-                <Area yAxisId="left" type="monotone" dataKey="shipments" stroke="#E31E24" fillOpacity={1} fill="url(#colorShip)" />
-                <Area yAxisId="right" type="monotone" dataKey="revenue" stroke="#10B981" fillOpacity={1} fill="url(#colorRev)" />
-                <Legend />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* Optional admin tiles */}
+        {user.userType === "admin" && (clientCount !== null || franchiseCount !== null) && (
+          <motion.div {...fadeUp} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            {clientCount !== null && (
+              <KPI title="Total Clients" value={clientCount} accent="from-indigo-500 to-blue-600" />
+            )}
+            {franchiseCount !== null && (
+              <KPI title="Total Branches/Franchises" value={franchiseCount} accent="from-teal-500 to-emerald-600" />
+            )}
+          </motion.div>
+        )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Status Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={analytics.pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3}>
-                  {analytics.pieData.map((_, i) => (
-                    <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </motion.div>
+        {/* Charts */}
+        <motion.div {...fadeUp} className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+          <Card className="col-span-1 xl:col-span-2">
+            <CardHeader>
+              <CardTitle>Shipments & Revenue (Monthly)</CardTitle>
+            </CardHeader>
+            <CardContent className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={analytics.timeSeries}>
+                  <defs>
+                    <linearGradient id="colorShip" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#E31E24" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#E31E24" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis yAxisId="left" orientation="left" allowDecimals={false} />
+                  <YAxis yAxisId="right" orientation="right" hide />
+                  <Tooltip formatter={(v, n) => (n === "revenue" ? niceCurrency(v, currency) : v)} />
+                  <Area yAxisId="left" type="monotone" dataKey="shipments" stroke="#E31E24" fillOpacity={1} fill="url(#colorShip)" />
+                  <Area yAxisId="right" type="monotone" dataKey="revenue" stroke="#10B981" fillOpacity={1} fill="url(#colorRev)" />
+                  <Legend />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-      <motion.div {...fadeUp} className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Top Destinations</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={analytics.topDest}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="country" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#3B82F6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Status Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={analytics.pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3}>
+                    {analytics.pieData.map((_, i) => (
+                      <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 max-h-64 overflow-y-auto pr-1">
-              {(analytics.recent || []).map((item, idx) => (
-                <div key={idx} className="flex justify-between items-start border-b pb-3">
-                  <div>
-                    <p className="text-sm font-medium">{item.awbNumber}</p>
-                    <p className="text-xs text-muted-foreground">{item.status}</p>
+        <motion.div {...fadeUp} className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Top Destinations</CardTitle>
+            </CardHeader>
+            <CardContent className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={analytics.topDest}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="country" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#3B82F6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 max-h-64 overflow-y-auto pr-1">
+                {(analytics.recent || []).map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-start border-b pb-3">
+                    <div>
+                      <p className="text-sm font-medium">{item.awbNumber}</p>
+                      <p className="text-xs text-muted-foreground">{item.status}</p>
+                    </div>
+                    <span className="text-xs text-gray-500">{format(item.at, "dd MMM, HH:mm")}</span>
                   </div>
-                  <span className="text-xs text-gray-500">{format(item.at, "dd MMM, HH:mm")}</span>
-                </div>
-              ))}
-              {!analytics.recent?.length && <p className="text-sm text-muted-foreground">No recent updates</p>}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+                ))}
+                {!analytics.recent?.length && (
+                  <p className="text-sm text-muted-foreground">No recent updates</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-      {/* Quick actions */}
-      <motion.div {...fadeUp} className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <ActionCard title="Get Rates" onClick={() => (window.location.href = "/get-rates")} />
-        <ActionCard title="PDF Rate" onClick={() => (window.location.href = "/pdf-rate")} />
-        <ActionCard title="New Booking" onClick={() => (window.location.href = "/awb/create")} />
-        <ActionCard title="All AWBs" onClick={() => (window.location.href = "/awb")} />
-      </motion.div>
-    </div>
-  );
+        {/* Quick actions */}
+        <motion.div {...fadeUp} className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <ActionCard title="Get Rates" onClick={() => (window.location.href = "/get-rates")} />
+          <ActionCard title="PDF Rate" onClick={() => (window.location.href = "/pdf-rate")} />
+          <ActionCard title="New Booking" onClick={() => (window.location.href = "/awb/create")} />
+          <ActionCard title="All AWBs" onClick={() => (window.location.href = "/awb")} />
+        </motion.div>
+      </>
+    )}
+  </div>
+);
 }
 
 // KPI Card

@@ -24,8 +24,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { useState, useEffect, useRef } from "react";
 import { useMediaQuery } from "react-responsive";
 import { DataTablePagination } from "./data-table-pagination";
 import { useRouter } from "next/navigation";
@@ -40,11 +40,68 @@ export function DataTable({ columns, data }) {
   // Our additional filters
   const [awbFilter, setAwbFilter] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
-  const [clientFilter, setClientFilter] = useState("");
+  const [clientFilter, setClientFilter] = useState(""); // stores CODE for filtering
+  const [clientNameInput, setClientNameInput] = useState(""); // displays NAME in input
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [filteredData, setFilteredData] = useState(data);
 
+  // For autocomplete
+  const [clientOptions, setClientOptions] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Fetch clients and franchises
+  useEffect(() => {
+    const fetchClientsAndFranchises = async () => {
+      try {
+        const [clientsRes, franchisesRes] = await Promise.all([
+          fetch("/api/clients").then((r) => r.json()),
+          fetch("/api/franchises").then((r) => r.json()),
+        ]);
+
+        const combined = [
+          ...(clientsRes.map((c) => ({
+            label: c.name || c.companyName,
+            value: c.code || c.id, // Use whatever unique code field exists
+            type: "client",
+          })) || []),
+          ...(franchisesRes.map((f) => ({
+            label: f.name || f.franchiseName,
+            value: f.code || f.id,
+            type: "franchise",
+          })) || []),
+        ];
+
+        setClientOptions(combined);
+      } catch (error) {
+        console.error("Failed to fetch clients or franchises:", error);
+      }
+    };
+
+    fetchClientsAndFranchises();
+  }, []);
+
+  // Filter options based on input
+  const filteredOptions = clientOptions.filter((option) =>
+    option.label.toLowerCase().includes(clientNameInput.toLowerCase())
+  );
+
+  // Handle outside click to close dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Apply filters
   useEffect(() => {
     let filtered = [...data];
 
@@ -64,9 +121,7 @@ export function DataTable({ columns, data }) {
 
     if (clientFilter.trim()) {
       filtered = filtered.filter((row) =>
-        row.refCode
-          ?.toLowerCase()
-          .includes(clientFilter.trim().toLowerCase())
+        row.refCode?.toLowerCase().includes(clientFilter.trim().toLowerCase())
       );
     }
 
@@ -104,6 +159,12 @@ export function DataTable({ columns, data }) {
     },
   });
 
+  const handleSelectClient = (option) => {
+    setClientNameInput(option.label); // Show name in input
+    setClientFilter(option.value); // Set code for actual filtering
+    setShowDropdown(false);
+  };
+
   return (
     <div className="w-full">
       <div className="flex items-center flex-wrap gap-2 py-1">
@@ -121,12 +182,35 @@ export function DataTable({ columns, data }) {
           className="max-w-40"
         />
 
-        <Input
-          placeholder="Filter by Client RefCode"
-          value={clientFilter}
-          onChange={(e) => setClientFilter(e.target.value)}
-          className="max-w-40"
-        />
+        {/* Client RefCode Filter with Autocomplete */}
+        <div className="relative max-w-40" ref={dropdownRef}>
+          <Input
+            placeholder="Filter by Client Name"
+            value={clientNameInput}
+            onChange={(e) => {
+              setClientNameInput(e.target.value);
+              setShowDropdown(true);
+              // Optional: Clear filter if input is cleared
+              if (!e.target.value) setClientFilter("");
+            }}
+            onFocus={() => setShowDropdown(true)}
+            className="w-full"
+          />
+          {showDropdown && filteredOptions.length > 0 && (
+            <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto mt-1">
+              {filteredOptions.map((option, idx) => (
+                <li
+                  key={idx}
+                  onClick={() => handleSelectClient(option)}
+                  className="px-4 py-2 cursor-pointer hover:bg-gray-100 border-b last:border-b-0 text-sm"
+                >
+                  {option.label}{" "}
+                  <span className="text-xs text-gray-500">({option.type})</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div>
           <label className="text-sm block">Start Date</label>
