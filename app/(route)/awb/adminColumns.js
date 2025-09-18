@@ -43,14 +43,27 @@ const ShowName = ({ id }) => {
       try {
         let data = null;
 
-        // Try fetching from franchises API first
-        const franchiseRes = await axios.get(`/api/franchises/${id}`);
-        data = franchiseRes.data;
-
-        // If not found in franchise, fallback to clients API
-        if (!data || !data.name) {
-          const clientRes = await axios.get(`/api/clients/${id}`);
-          data = clientRes.data;
+        // Try franchise API
+        try {
+          const franchiseRes = await axios.get(`/api/franchises/${id}`);
+          data = franchiseRes.data;
+        } catch (err) {
+          if (err.response && err.response.status === 404) {
+            // If 404, fallback to clients API
+            try {
+              const clientRes = await axios.get(`/api/clients/${id}`);
+              data = clientRes.data[0];
+            } catch (clientErr) {
+              if (clientErr.response && clientErr.response.status === 404) {
+                setName("Error"); // not found in both
+                return;
+              } else {
+                throw clientErr; // other error from clients API
+              }
+            }
+          } else {
+            throw err; // other error from franchises API
+          }
         }
 
         setName(data?.name || "Unknown Client");

@@ -119,7 +119,7 @@ export default function SinglePickupPage() {
       >
         {/* HEADER SECTION — Company + Contact Info */}
         <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white p-6 md:p-8">
-          <div className="flex flex-col md:flex-col justify-between items-start md:items-center gap-4">
+          <div className="flex flex-col md:flex-col justify-between items-start md:items-center gap-4 text-center">
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
                 SunEx Services Private Limited
