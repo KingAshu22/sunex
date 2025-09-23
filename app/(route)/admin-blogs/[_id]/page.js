@@ -1,7 +1,9 @@
+"use client";
+
 import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
+import { useRouter } from "next/navigation";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 
 export default function EditBlog() {
   const [formData, setFormData] = useState({
