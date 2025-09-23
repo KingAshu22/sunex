@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 
-export default function EditBlog() {
+export default function EditBlog({ params }) {
   const [formData, setFormData] = useState({
     title: "",
     metaTitle: "",
@@ -19,7 +19,7 @@ export default function EditBlog() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const { _id } = router.query;
+  const { _id } = use(params);
   
   useEffect(() => {
     if (_id) {
