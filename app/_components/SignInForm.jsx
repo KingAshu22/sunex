@@ -145,7 +145,9 @@ export default function SignInForm() {
           const authExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
           localStorage.setItem("id", data.client._id);
           localStorage.setItem("userType", "client");
-          localStorage.setItem("name", data.client.name);
+          // if company name is available, use it; otherwise, use personal name
+          localStorage.setItem("name", data.client.companyName || data.client.name);
+          localStorage.setItem("code", data.client.code);
           localStorage.setItem("authExpiry", authExpiry);
           router.push(returnUrl);
         } else {

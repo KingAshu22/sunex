@@ -177,6 +177,9 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [ourBoxes, setOurBoxes] = useState(awb?.ourBoxes || [])
   const [vendorBoxes, setVendorBoxes] = useState(awb?.vendorBoxes || [])
 
+  const userType = typeof window !== "undefined" ? localStorage.getItem("userType") : "";
+const [isClient, setIsClient] = useState(userType === "client");
+
   // Derived state
   const [totalChargeableWeight, setTotalChargeableWeight] = useState("")
   const [profitPercent, setProfitPercent] = useState(50)
@@ -335,6 +338,38 @@ export default function AWBForm({ isEdit = false, awb }) {
   }, [])
 
   useEffect(() => {
+  const userType = localStorage.getItem("userType");
+  const code = localStorage.getItem("code");
+
+  if (userType === "client" && code) {
+    const fetchClientData = async () => {
+      try {
+        const res = await axios.get(`/api/clients/${code}`);
+        const client = Array.isArray(res.data) ? res.data[0] : res.data;
+
+        if (client) {
+          setSenderName(client.name || "");
+          setSenderCompanyName(client.companyName || "");
+          setSenderZipCode(client.zip || "");
+          setSenderCountry(client.country || "India");
+          setSenderContact(client.contact?.toString() || "");
+          setSenderAddress(client.address || "");
+          setKycType(client.kyc?.type || "Aadhaar No");
+          setKyc(client.kyc?.kyc || "");
+          setKycDocument(client.kyc?.document || "");
+          setGst(client.gstNo || "");
+        }
+      } catch (err) {
+        console.error("Error fetching client data:", err);
+        toast.error("Failed to fetch client details");
+      }
+    };
+
+    fetchClientData();
+  }
+}, []);
+
+  useEffect(() => {
   if (isEdit) {
     const storedCode = awb?.refCode || "";
 
@@ -408,7 +443,7 @@ export default function AWBForm({ isEdit = false, awb }) {
 
           // 2. Franchise doc from client's owner
           let franchisePercent = 0
-          if (client?.owner) {
+          if (client?.owner && client?.owner !== "admin") {
             const fRes = await axios.get(`/api/franchises/${client.owner}`)
             const franchise = Array.isArray(fRes.data) ? fRes.data[0] : fRes.data
             const fRates = franchise?.rates || []
@@ -1105,6 +1140,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 value={invoiceNumber}
                 readOnly
                 className="h-6 text-xs"
+                disabled={true}
               />
             </div>
             <div className="space-y-1">
@@ -1118,6 +1154,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
                 className="h-6 text-xs"
+                disabled={true}
               />
             </div>
             <div className="space-y-1">
@@ -1227,7 +1264,6 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </PopoverContent>
               </Popover>
             </div>
-            {localStorage.getItem("userType") !== "client" && (
               <div className="relative">
                 <Label htmlFor="refCode" className="text-xs">
                   Reference Code
@@ -1286,10 +1322,10 @@ export default function AWBForm({ isEdit = false, awb }) {
                     onChange={(e) => setRefCode(e.target.value)}
                     autoComplete="off"
                     className="h-6 text-xs"
+                    disabled={isClient}
                   />
                 )}
               </div>
-            )}
             {isEdit && (
               <>
                 <div className="space-y-1">
@@ -1620,6 +1656,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     onChange={(e) => setSenderName(e.target.value)}
                     required
                     className="flex-1 h-6 text-xs"
+                    disabled={isClient}
                   />
                   <Button
                     type="button"
@@ -1643,6 +1680,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                   value={senderCompanyName}
                   onChange={(e) => setSenderCompanyName(e.target.value)}
                   className="h-6 text-xs"
+                  disabled={isClient}
                 />
               </div>
 
@@ -1673,6 +1711,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     onChange={(e) => handlePinCodeChange(e.target.value, setSenderZipCode)}
                     required
                     className="pr-6 h-6 text-xs"
+                    disabled={isClient}
                   />
                   {senderZipCode && senderZipCode.length >= 5 && (
                     <div className="absolute inset-y-0 right-0 flex items-center pr-1 pointer-events-none">
@@ -1743,6 +1782,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     onChange={(e) => setSenderContact(e.target.value)}
                     required
                     className={cn("h-6 text-xs", senderCountry ? "rounded-l-none" : "")}
+                    disabled={isClient}
                   />
                 </div>
               </div>
@@ -1758,11 +1798,12 @@ export default function AWBForm({ isEdit = false, awb }) {
                   rows={2}
                   required
                   className="text-xs resize-none"
+                  disabled={isClient}
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">KYC Type*</Label>
-                <Select value={kycType} onValueChange={setKycType} required>
+                <Select value={kycType} onValueChange={setKycType} disabled={isClient} required>
                   <SelectTrigger className="h-6 text-xs">
                     <SelectValue placeholder="KYC Type" />
                   </SelectTrigger>
@@ -1794,6 +1835,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                   onChange={(e) => setKyc(e.target.value)}
                   required
                   className="h-6 text-xs"
+                  disabled={isClient}
                 />
               </div>
               <div className="space-y-1">
@@ -1808,6 +1850,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                   onChange={(e) => setKycDocument(e.target.value)}
                   required
                   className="h-6 text-xs"
+                  disabled={isClient}
                 />
               </div>
               <div className="space-y-1">
@@ -1821,6 +1864,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                   value={gst}
                   onChange={(e) => setGst(e.target.value)}
                   className="h-6 text-xs"
+                  disabled={isClient}
                 />
               </div>
             </CardContent>
