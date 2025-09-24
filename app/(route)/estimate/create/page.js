@@ -30,6 +30,7 @@ export default function CreateEstimate() {
     city: '',
     zipCode: '',
     country: '',
+    receiverCity: '',
     receiverCountry: '',
     awbNumber: '',
     forwardingNumber: '',
@@ -231,6 +232,18 @@ export default function CreateEstimate() {
               </Command>
             </PopoverContent>
           </Popover>
+        </div>
+
+        {/* Receiver City */}
+        <div>
+          <label className="block mb-1">Receiver City</label>
+          <input
+            type="text"
+            name="receiverCity"
+            value={formData.receiverCity}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          />
         </div>
 
         {/* Receiver Country Dropdown */}

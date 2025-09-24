@@ -156,7 +156,7 @@ export default function EstimateList() {
                     {new Date(estimate.date).toLocaleDateString()}
                   </td>
                   <td className="py-2 px-4 border-b">{estimate.name}</td>
-                  <td className="py-2 px-4 border-b">{estimate.country}</td>
+                  <td className="py-2 px-4 border-b">{estimate.receiverCountry}</td>
                   <td className="py-2 px-4 border-b">{estimate.weight}</td>
                   <td className="py-2 px-4 border-b">{estimate.rate}</td>
                   <td className="py-2 px-4 border-b flex items-center space-x-3">
@@ -173,7 +173,7 @@ export default function EstimateList() {
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <button
-                          onClick={() => setDeleteId(estimate._id)}
+                          onClick={() => setDeleteId(estimate.code)}
                           className="text-red-600 hover:text-red-800"
                         >
                           <Trash2 className="w-5 h-5" />

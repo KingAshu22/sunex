@@ -140,7 +140,7 @@ export default function ViewEstimate() {
             <tbody>
               <tr>
                 <td className="border border-gray-300 px-4 py-3 text-xs">
-                  Shipping Service to {estimate.receiverCountry}
+                  Shipping Service to {estimate?.receiverCity}, {estimate.receiverCountry}
                 </td>
                 <td className="border border-gray-300 px-4 py-3 text-right">{estimate.weight.toFixed(2)}</td>
                 <td className="border border-gray-300 px-4 py-3 text-right">₹{estimate.rate.toFixed(2)}</td>

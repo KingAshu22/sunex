@@ -9,6 +9,7 @@ export const EstimateSchema = new Schema({
     zipCode: String,
     country: String,
     weight: Number,
+    receiverCity: String,
     receiverCountry: String,
     rate: Number,
     awbNumber: String,
