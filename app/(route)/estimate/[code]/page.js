@@ -10,7 +10,7 @@ export default function ViewEstimate() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { code } = useParams();
-  const printRef = useRef();
+  const printRef = useRef(null);
 
   useEffect(() => {
     const fetchEstimate = async () => {
@@ -62,11 +62,6 @@ export default function ViewEstimate() {
 
   if (!estimate) return null;
 
-  const subtotal = estimate.weight * estimate.rate;
-  const taxRate = 0; // You can customize this
-  const taxAmount = subtotal * taxRate;
-  const total = subtotal + taxAmount;
-
   return (
     <div className="p-6 max-w-3xl mx-auto bg-gray-50 min-h-screen">
       {/* Action Buttons */}
@@ -107,23 +102,33 @@ export default function ViewEstimate() {
           <hr className="border-t-2 border-gray-300 my-4" />
         </div>
 
+        {/* Title */}
+        <h3 className='text-center font-bold text-[#F44336] text-xl'>ESTIMATE</h3>
+
         {/* Estimate Info */}
-        <h3 className='text-center font-bold m-0 -mb-40 -pb-40 text-[#F44336] text-xl'>ESTIMATE</h3>
         <div className="grid grid-cols-2 gap-4 text-sm mb-6">
+          {/* Sender */}
           <div>
             <strong>Estimate To:</strong>
             <div className="mt-1 font-bold">{estimate.name}</div>
+            <div>{estimate.address}</div>
+            <div>{estimate.city} - {estimate.zipCode}</div>
             <div>{estimate.country}</div>
           </div>
+          {/* Estimate Details */}
           <div className="text-right">
             <div><strong>Estimate #:</strong> {estimate.code}</div>
             <div><strong>Date:</strong> {new Date(estimate.date).toLocaleDateString()}</div>
+            <div><strong>Receiver Country:</strong> {estimate.receiverCountry}</div>
+            {estimate?.awbNumber && <div><strong>AWB Number:</strong> {estimate.awbNumber || 'N/A'}</div>}
+            {estimate?.forwardingNumber && <div><strong>Forwarding Number:</strong> {estimate.forwardingNumber || 'N/A'}</div>}
+            {estimate?.forwardingLink && <div><strong>Forwarding Link:</strong> {estimate.forwardingLink ? <a href={estimate.forwardingLink} className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">Track Here</a> : 'N/A'}</div>}
           </div>
         </div>
 
         {/* Table */}
         <div className="w-full overflow-hidden">
-          <table className="w-full border-collapse border border-gray-300">
+          <table className="w-full border-collapse border border-gray-300 text-sm">
             <thead>
               <tr className="bg-gray-100">
                 <th className="border border-gray-300 px-4 py-2 text-left">Description</th>
@@ -134,16 +139,30 @@ export default function ViewEstimate() {
             </thead>
             <tbody>
               <tr>
-                <td className="border border-gray-300 px-4 py-3 text-xs">Shipping Service to {estimate.country}</td>
+                <td className="border border-gray-300 px-4 py-3 text-xs">
+                  Shipping Service to {estimate.receiverCountry}
+                </td>
                 <td className="border border-gray-300 px-4 py-3 text-right">{estimate.weight.toFixed(2)}</td>
                 <td className="border border-gray-300 px-4 py-3 text-right">₹{estimate.rate.toFixed(2)}</td>
-                <td className="border border-gray-300 px-4 py-3 text-right">₹{subtotal.toFixed(2)}</td>
+                <td className="border border-gray-300 px-4 py-3 text-right">₹{estimate.subtotal.toFixed(2)}</td>
               </tr>
             </tbody>
             <tfoot>
+              {estimate?.discount > 0 && 
+              <tr>
+                <td colSpan={3} className="border border-gray-300 px-4 py-2 text-right font-bold">Subtotal</td>
+                <td className="border border-gray-300 px-4 py-2 text-right">₹{estimate.subtotal.toFixed(2)}</td>
+              </tr>
+              }
+              {estimate?.discount > 0 &&
+              <tr>
+                <td colSpan={3} className="border border-gray-300 px-4 py-2 text-right font-bold">Discount</td>
+                <td className="border border-gray-300 px-4 py-2 text-right">- ₹{estimate.discount?.toFixed(2) || "0.00"}</td>
+              </tr>
+              }
               <tr className="bg-blue-50">
-                <td colSpan="3" className="border border-gray-300 px-4 py-3 text-right font-bold text-lg">TOTAL</td>
-                <td className="border border-gray-300 px-4 py-3 text-right font-bold text-lg">₹{total.toFixed(2)}</td>
+                <td colSpan={3} className="border border-gray-300 px-4 py-3 text-right font-bold text-lg">TOTAL</td>
+                <td className="border border-gray-300 px-4 py-3 text-right font-bold text-lg">₹{estimate.total.toFixed(2)}</td>
               </tr>
             </tfoot>
           </table>

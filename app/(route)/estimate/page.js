@@ -2,6 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import toast from 'react-hot-toast';
 
 export default function EstimateList() {
   const [estimates, setEstimates] = useState([]);
@@ -16,6 +29,7 @@ export default function EstimateList() {
     totalPages: 1,
     totalItems: 0,
   });
+  const [deleteId, setDeleteId] = useState(null);
 
   const fetchEstimates = async (page = 1) => {
     setLoading(true);
@@ -53,10 +67,31 @@ export default function EstimateList() {
     fetchEstimates(page);
   };
 
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      const res = await fetch(`/api/estimate/${deleteId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        setEstimates((prev) => prev.filter((e) => e._id !== deleteId));
+        toast.success('Estimate Deleted');
+      } else {
+        toast.error('Delete Failed');
+      }
+    } catch (error) {
+      toast.error('Error');
+    } finally {
+      setDeleteId(null);
+    }
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Estimates</h1>
 
+      {/* Filters */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
         <input
           type="date"
@@ -124,13 +159,43 @@ export default function EstimateList() {
                   <td className="py-2 px-4 border-b">{estimate.country}</td>
                   <td className="py-2 px-4 border-b">{estimate.weight}</td>
                   <td className="py-2 px-4 border-b">{estimate.rate}</td>
-                  <td className="py-2 px-4 border-b">
+                  <td className="py-2 px-4 border-b flex items-center space-x-3">
                     <Link href={`/estimate/${estimate.code}`}>
-                      <button className="text-blue-600 hover:underline mr-2">View</button>
+                      <button className="text-blue-600 hover:text-blue-800">
+                        <Eye className="w-5 h-5" />
+                      </button>
                     </Link>
                     <Link href={`/edit-estimate/${estimate.code}`}>
-                      <button className="text-yellow-600 hover:underline">Edit</button>
+                      <button className="text-yellow-600 hover:text-yellow-800">
+                        <Pencil className="w-5 h-5" />
+                      </button>
                     </Link>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          onClick={() => setDeleteId(estimate._id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Estimate</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this estimate? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setDeleteId(null)}>
+                            Cancel
+                          </AlertDialogCancel>
+                          <AlertDialogAction onClick={confirmDelete}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </td>
                 </tr>
               ))}
