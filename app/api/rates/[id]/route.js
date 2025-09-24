@@ -25,7 +25,7 @@ export async function PUT(req, { params }) {
     const { id } = await params;
     const body = await req.json()
 
-    const { type, service, originalName, rates, zones } = body
+    const { type, service, originalName, rates, zones, covidCharges, fuelCharges } = body
 
     if (!type || !service || !originalName || !rates || !zones) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -39,6 +39,8 @@ export async function PUT(req, { params }) {
         originalName,
         rates,
         zones,
+        covidCharges,
+        fuelCharges,
         updatedAt: new Date(),
       },
       { new: true },

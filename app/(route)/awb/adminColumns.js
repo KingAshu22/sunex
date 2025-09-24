@@ -66,7 +66,7 @@ const ShowName = ({ id }) => {
           }
         }
 
-        setName(data?.name || "Unknown Client");
+        setName(data?.companyName || data?.firmName.slice(0, 10) || data?.name || "Unknown Client");
       } catch (err) {
         console.error("Error fetching client:", err);
         setName("Error");

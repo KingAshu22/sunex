@@ -76,15 +76,19 @@ export async function GET(req) {
         const baseCharge = parseFloat((perKgRate * weight).toFixed(2));
         let baseCharges = baseCharge;
 
-        // COVID charges
+        // --- COVID charges ---
         let covidCharges = 0;
-        const covidChargePerKg = 15;
-        if (["aramex"].includes(type)) {
+        if (rateResult.covidCharges !== undefined && rateResult.covidCharges !== null) {
+            // use value from DB (assumed per-kg)
+            covidCharges = parseFloat((rateResult.covidCharges * weight).toFixed(2));
+        } else if (["aramex"].includes(type)) {
+            // fallback logic
+            const covidChargePerKg = 15;
             covidCharges = parseFloat((covidChargePerKg * weight).toFixed(2));
         }
         baseCharges += covidCharges;
 
-        // Extra charges
+        // --- Extra charges ---
         let extraChargeTotal = 0;
         for (const chargeValue of Object.values(extraCharges)) {
             const charge = parseFloat((chargeValue * weight).toFixed(2));
@@ -92,35 +96,41 @@ export async function GET(req) {
         }
         baseCharges += extraChargeTotal;
 
-        // Fuel charges
+        // --- Fuel charges ---
         let fuelCharges = 0;
-        if (type === "dhl") {
-            fuelCharges = parseFloat(((27.5 / 100) * baseCharges).toFixed(2));
-        } else if (type === "fedex") {
-            fuelCharges = parseFloat(((29 / 100) * baseCharges).toFixed(2));
-        } else if (type === "ups") {
-            fuelCharges = parseFloat(((30.5 / 100) * baseCharges).toFixed(2));
-        } else if (type === "dtdc") {
-            fuelCharges = parseFloat(((36 / 100) * baseCharges).toFixed(2));
-        } else if (["aramex", "orbit"].includes(type)) {
-            fuelCharges = parseFloat(((35.5 / 100) * baseCharges).toFixed(2));
+        if (rateResult.fuelCharges !== undefined && rateResult.fuelCharges !== null) {
+            // use value from DB (assumed percentage of baseCharges)
+            fuelCharges = parseFloat(((rateResult.fuelCharges / 100) * baseCharges).toFixed(2));
+        } else {
+            // fallback logic
+            if (type === "dhl") {
+                fuelCharges = parseFloat(((27.5 / 100) * baseCharges).toFixed(2));
+            } else if (type === "fedex") {
+                fuelCharges = parseFloat(((29 / 100) * baseCharges).toFixed(2));
+            } else if (type === "ups") {
+                fuelCharges = parseFloat(((30.5 / 100) * baseCharges).toFixed(2));
+            } else if (type === "dtdc") {
+                fuelCharges = parseFloat(((36 / 100) * baseCharges).toFixed(2));
+            } else if (["aramex", "orbit"].includes(type)) {
+                fuelCharges = parseFloat(((35.5 / 100) * baseCharges).toFixed(2));
+            }
         }
         baseCharges += fuelCharges;
 
-        // Profit
+        // --- Profit ---
         const profitCharges = parseFloat(((profitPercent / 100) * baseCharges).toFixed(2));
         const total = parseFloat((baseCharges + profitCharges).toFixed(2));
 
-        // GST
+        // --- GST ---
         const GST = parseFloat(((18 / 100) * total).toFixed(2));
         const totalWithGST = parseFloat((total + GST).toFixed(2));
 
         return NextResponse.json({
             service: rateResult.service,
             zone: selectedZone,
-            requestedWeight: weight,      // ✅ final rounded weight used
-            weight,                // ✅ closest db weight used for per-kg rate
-            rate: perKgRate,                    // ✅ actual calculated per-kg rate
+            requestedWeight: weight, // ✅ final rounded weight used
+            weight: closestWeight,   // ✅ closest db weight used for per-kg rate
+            rate: perKgRate,
             zoneRate: parseFloat(zoneRate.toFixed(2)),
             baseCharge,
             covidCharges,

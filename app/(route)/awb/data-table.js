@@ -62,12 +62,12 @@ export function DataTable({ columns, data }) {
 
         const combined = [
           ...(clientsRes.map((c) => ({
-            label: c.name || c.companyName,
+            label: c.companyName || c.name,
             value: c.code || c.id, // Use whatever unique code field exists
             type: "client",
           })) || []),
           ...(franchisesRes.map((f) => ({
-            label: f.name || f.franchiseName,
+            label: f.firmName || f.name,
             value: f.code || f.id,
             type: "franchise",
           })) || []),
