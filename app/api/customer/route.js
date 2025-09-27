@@ -10,7 +10,7 @@ export async function GET(req) {
         const userType = req.headers.get("userType");
         const userId = req.headers.get("userId");
         let customers;
-        if (userType === "admin") {
+        if (userType === "admin" || userType === "branch") {
             customers = await Customer.find({}).sort({ _id: -1 });
     } else {
       customers = await Customer.find({owner: userId}).sort({ _id: -1 });
