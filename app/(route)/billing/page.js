@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import isAdminAuth from '@/lib/isAdminAuth';
 
 function BillingPage() {
     const [awbs, setAwbs] = useState([]);
@@ -920,3 +921,5 @@ function BillingPage() {
         </div>
     );
 }
+
+export default isAdminAuth(BillingPage);
