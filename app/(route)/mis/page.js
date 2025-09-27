@@ -11,8 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Download, FileText, Package, TrendingUp, Users, Search, ChevronUp, ChevronDown } from "lucide-react"
 import { format } from "date-fns"
+import isAdminAuth from "@/lib/isAdminAuth"
 
-export default function AllAWBsMISPage() {
+function AllAWBsMISPage() {
   const [awbs, setAwbs] = useState([])
   const [clients, setClients] = useState([])
   const [franchises, setFranchises] = useState([])
@@ -1028,3 +1029,5 @@ export default function AllAWBsMISPage() {
     </div>
   )
 }
+
+export default isAdminAuth(AllAWBsMISPage)

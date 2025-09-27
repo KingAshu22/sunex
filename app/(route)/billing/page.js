@@ -3,8 +3,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+    Card,
+    CardHeader,
+    CardTitle,
+    CardContent,
+    CardFooter,
+} from "@/components/ui/card";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
-export default function BillingPage() {
+function BillingPage() {
     const [awbs, setAwbs] = useState([]);
     const [filteredAwbs, setFilteredAwbs] = useState([]);
     const [selectedAwbs, setSelectedAwbs] = useState([]);
@@ -296,26 +314,50 @@ export default function BillingPage() {
         }));
     };
 
-    const saveBilling = () => {
-        // Here you would typically send the billing data to your backend
-        // For now, we'll just log it and prepare for printing
-        const billingData = {
-            billingInfo,
-            selectedAwbs: selectedAwbs.map(id => {
-                const awb = awbs.find(a => a._id.$oid === id);
-                const rate = manualRates.find(r => r.awbId === id);
-                return {
-                    ...awb,
-                    appliedRate: rate?.rate || 0
-                };
-            }),
-            rates: manualRates.filter(r => selectedAwbs.includes(r.awbId)),
-            totals,
-            rateSettings
-        };
+    const saveBilling = async () => {
+        try {
+            const billingData = {
+                billingInfo,
+                awbs: selectedAwbs.map(id => {
+                    const awb = awbs.find(a => a._id === id);
+                    const rate = manualRates.find(r => r.awbId === id);
+                    const ratePerKg = rate?.weight ? rate.rate / rate.weight : 0;
 
-        console.log('Billing Data Saved:', billingData);
-        alert('Billing information saved successfully!');
+                    return {
+                        awbId: id,
+                        trackingNumber: awb.trackingNumber,
+                        weight: rate?.weight || 0,
+                        ratePerKg: parseFloat(ratePerKg.toFixed(2)),
+                        amount: rate?.rate || 0,
+                        country: awb.receiver?.country || "Unknown",
+                    };
+                }),
+                subtotal: totals.subtotal,
+                cgst: rateSettings.cgst,
+                sgst: rateSettings.sgst,
+                igst: rateSettings.igst,
+                cgstAmount: totals.cgstAmount,
+                sgstAmount: totals.sgstAmount,
+                igstAmount: totals.igstAmount,
+                total: totals.total,
+                paid: totals.paid,
+                balance: totals.balance,
+            };
+
+            const res = await fetch("/api/billing", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(billingData),
+            });
+
+            if (!res.ok) throw new Error("Failed to save bill");
+            const result = await res.json();
+
+            alert(`Bill Saved! Bill No: ${result.bill.billNumber}`);
+        } catch (err) {
+            console.error(err);
+            alert("Error saving bill");
+        }
     };
 
     const printBill = () => {
@@ -630,213 +672,252 @@ export default function BillingPage() {
 
             {/* Rate Configuration Section */}
             {selectedAwbs.length > 0 && (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h2 className="text-xl font-semibold mb-4">Rate Configuration</h2>
-
-                    <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Are rates including GST?
-                        </label>
-                        <div className="flex space-x-4">
-                            <label className="inline-flex items-center">
-                                <input
-                                    type="radio"
-                                    checked={rateSettings.includeGST}
-                                    onChange={() => setRateSettings(prev => ({ ...prev, includeGST: true }))}
-                                    className="form-radio h-5 w-5 text-blue-600"
-                                />
-                                <span className="ml-2">Yes</span>
-                            </label>
-                            <label className="inline-flex items-center">
-                                <input
-                                    type="radio"
-                                    checked={!rateSettings.includeGST}
-                                    onChange={() => setRateSettings(prev => ({ ...prev, includeGST: false }))}
-                                    className="form-radio h-5 w-5 text-blue-600"
-                                />
-                                <span className="ml-2">No</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div className="mb-6">
-                        <h3 className="text-lg font-medium mb-3">Tax Rates</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">CGST (%)</label>
-                                <input
-                                    type="number"
-                                    value={rateSettings.cgst}
-                                    onChange={(e) => setRateSettings(prev => ({ ...prev, cgst: parseFloat(e.target.value) || 0 }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">SGST (%)</label>
-                                <input
-                                    type="number"
-                                    value={rateSettings.sgst}
-                                    onChange={(e) => setRateSettings(prev => ({ ...prev, sgst: parseFloat(e.target.value) || 0 }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">IGST (%)</label>
-                                <input
-                                    type="number"
-                                    value={rateSettings.igst}
-                                    onChange={(e) => setRateSettings(prev => ({ ...prev, igst: parseFloat(e.target.value) || 0 }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mb-6">
-                        <h3 className="text-lg font-medium mb-3">Set Rates by Country</h3>
-                        <div className="space-y-3">
-                            {Object.keys(ratesByCountry).map(country => (
-                                <div key={country} className="flex items-center space-x-4 p-3 bg-gray-50 rounded">
-                                    <span className="font-medium w-32">{country}</span>
-                                    <span className="text-sm text-gray-600 w-40">
-                                        Avg: ₹{ratesByCountry[country].toFixed(2)}/kg
-                                    </span>
+                <Card className="mb-6 shadow-lg border">
+                    <CardHeader>
+                        <CardTitle className="text-xl">Rate Configuration</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-8">
+                        {/* GST Inclusion */}
+                        <div>
+                            <Label className="mb-2 block">Are rates including GST?</Label>
+                            <div className="flex space-x-6">
+                                <label className="flex items-center space-x-2">
                                     <input
+                                        type="radio"
+                                        checked={rateSettings.includeGST}
+                                        onChange={() =>
+                                            setRateSettings((prev) => ({ ...prev, includeGST: true }))
+                                        }
+                                        className="h-4 w-4 text-blue-600"
+                                    />
+                                    <span>Yes</span>
+                                </label>
+                                <label className="flex items-center space-x-2">
+                                    <input
+                                        type="radio"
+                                        checked={!rateSettings.includeGST}
+                                        onChange={() =>
+                                            setRateSettings((prev) => ({ ...prev, includeGST: false }))
+                                        }
+                                        className="h-4 w-4 text-blue-600"
+                                    />
+                                    <span>No</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Tax Rates */}
+                        <div>
+                            <h3 className="text-lg font-medium mb-3">Tax Rates</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <Label className="mb-1 block">CGST (%)</Label>
+                                    <Input
                                         type="number"
-                                        placeholder="Rate per kg"
-                                        onChange={(e) => handleCountryRateChange(country, e.target.value)}
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={rateSettings.cgst}
+                                        onChange={(e) =>
+                                            setRateSettings((prev) => ({
+                                                ...prev,
+                                                cgst: parseFloat(e.target.value) || 0,
+                                            }))
+                                        }
                                     />
                                 </div>
-                            ))}
+                                <div>
+                                    <Label className="mb-1 block">SGST (%)</Label>
+                                    <Input
+                                        type="number"
+                                        value={rateSettings.sgst}
+                                        onChange={(e) =>
+                                            setRateSettings((prev) => ({
+                                                ...prev,
+                                                sgst: parseFloat(e.target.value) || 0,
+                                            }))
+                                        }
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="mb-1 block">IGST (%)</Label>
+                                    <Input
+                                        type="number"
+                                        value={rateSettings.igst}
+                                        onChange={(e) =>
+                                            setRateSettings((prev) => ({
+                                                ...prev,
+                                                igst: parseFloat(e.target.value) || 0,
+                                            }))
+                                        }
+                                    />
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <h3 className="text-lg font-medium mb-3">Individual AWB Rates</h3>
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AWB No.</th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracking No.</th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight (kg)</th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate (₹)</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
+                        {/* Individual AWB Rates Table */}
+                        <div>
+                            <h3 className="text-lg font-medium mb-3">Individual AWB Rates</h3>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>AWB No.</TableHead>
+                                        <TableHead>Tracking No.</TableHead>
+                                        <TableHead>Weight (kg)</TableHead>
+                                        <TableHead>Country</TableHead>
+                                        <TableHead>Rate/kg (₹)</TableHead>
+                                        <TableHead>Amount (₹)</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
                                     {manualRates
-                                        .filter(rate => selectedAwbs.includes(rate.awbId))
-                                        .map(rate => {
-                                            const awb = awbs.find(a => a._id.$oid === rate.awbId);
+                                        .filter((rate) => selectedAwbs.includes(rate.awbId))
+                                        .map((rate) => {
+                                            const awb = awbs.find((a) => a._id === rate.awbId);
+                                            const ratePerKg =
+                                                rate.weight > 0 ? rate.rate / rate.weight : 0;
+
                                             return (
-                                                <tr key={rate.awbId}>
-                                                    <td className="px-6 py-4 whitespace-nowrap">{awb?.cNoteNumber || awb?.awbNumber || '-'}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">{awb?.trackingNumber}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <input
+                                                <TableRow key={rate.awbId}>
+                                                    <TableCell>{awb?.cNoteNumber || awb?.awbNumber || "-"}</TableCell>
+                                                    <TableCell>{awb?.trackingNumber}</TableCell>
+                                                    <TableCell>
+                                                        <Input
                                                             type="number"
                                                             step="0.01"
                                                             value={rate.weight}
-                                                            onChange={(e) => handleRateChange(rate.awbId, 'weight', e.target.value)}
-                                                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                            onChange={(e) =>
+                                                                handleRateChange(rate.awbId, "weight", e.target.value)
+                                                            }
+                                                            className="w-24"
                                                         />
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">{rate.country}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <input
+                                                    </TableCell>
+                                                    <TableCell>{rate.country}</TableCell>
+                                                    <TableCell>
+                                                        <Input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={ratePerKg.toFixed(2)}
+                                                            onChange={(e) => {
+                                                                const newRatePerKg = parseFloat(e.target.value) || 0;
+                                                                handleRateChange(
+                                                                    rate.awbId,
+                                                                    "rate",
+                                                                    newRatePerKg * rate.weight
+                                                                );
+                                                            }}
+                                                            className="w-28"
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Input
                                                             type="number"
                                                             step="0.01"
                                                             value={rate.rate}
-                                                            onChange={(e) => handleRateChange(rate.awbId, 'rate', e.target.value)}
-                                                            className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                            onChange={(e) =>
+                                                                handleRateChange(rate.awbId, "rate", e.target.value)
+                                                            }
+                                                            className="w-32"
                                                         />
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             );
                                         })}
-                                </tbody>
-                            </table>
+                                </TableBody>
+                            </Table>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             )}
 
-            {/* Totals and Payment Section */}
+            {/* Billing Summary Section */}
             {selectedAwbs.length > 0 && (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h2 className="text-xl font-semibold mb-4">Billing Summary</h2>
+                <Card className="mb-10 shadow-lg border">
+                    <CardHeader>
+                        <CardTitle className="text-xl">Billing Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableBody>
+                                <TableRow>
+                                    <TableCell className="font-medium">Subtotal</TableCell>
+                                    <TableCell className="text-right">
+                                        ₹{totals.subtotal.toFixed(2)}
+                                    </TableCell>
+                                </TableRow>
 
-                    <div className="space-y-3 mb-6">
-                        <div className="flex justify-between">
-                            <span className="font-medium">Subtotal:</span>
-                            <span>₹{totals.subtotal.toFixed(2)}</span>
-                        </div>
+                                {totals.cgstAmount > 0 && (
+                                    <TableRow>
+                                        <TableCell className="font-medium">
+                                            CGST ({rateSettings.cgst}%)
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            ₹{totals.cgstAmount.toFixed(2)}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
 
-                        {totals.cgstAmount > 0 && (
-                            <div className="flex justify-between">
-                                <span className="font-medium">CGST ({rateSettings.cgst}%):</span>
-                                <span>₹{totals.cgstAmount.toFixed(2)}</span>
-                            </div>
-                        )}
+                                {totals.sgstAmount > 0 && (
+                                    <TableRow>
+                                        <TableCell className="font-medium">
+                                            SGST ({rateSettings.sgst}%)
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            ₹{totals.sgstAmount.toFixed(2)}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
 
-                        {totals.sgstAmount > 0 && (
-                            <div className="flex justify-between">
-                                <span className="font-medium">SGST ({rateSettings.sgst}%):</span>
-                                <span>₹{totals.sgstAmount.toFixed(2)}</span>
-                            </div>
-                        )}
+                                {totals.igstAmount > 0 && (
+                                    <TableRow>
+                                        <TableCell className="font-medium">
+                                            IGST ({rateSettings.igst}%)
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            ₹{totals.igstAmount.toFixed(2)}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
 
-                        {totals.igstAmount > 0 && (
-                            <div className="flex justify-between">
-                                <span className="font-medium">IGST ({rateSettings.igst}%):</span>
-                                <span>₹{totals.igstAmount.toFixed(2)}</span>
-                            </div>
-                        )}
+                                <TableRow className="bg-gray-50 font-bold text-lg">
+                                    <TableCell>Total</TableCell>
+                                    <TableCell className="text-right">
+                                        ₹{totals.total.toFixed(2)}
+                                    </TableCell>
+                                </TableRow>
 
-                        <div className="flex justify-between border-t pt-3 font-bold">
-                            <span>Total:</span>
-                            <span>₹{totals.total.toFixed(2)}</span>
-                        </div>
+                                <TableRow>
+                                    <TableCell className="font-medium">Paid Amount</TableCell>
+                                    <TableCell className="text-right">
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            value={totals.paid}
+                                            onChange={(e) => handlePaidAmountChange(e.target.value)}
+                                            className="w-32 text-right"
+                                        />
+                                    </TableCell>
+                                </TableRow>
 
-                        <div className="flex justify-between">
-                            <span className="font-medium">Paid Amount:</span>
-                            <input
-                                type="number"
-                                step="0.01"
-                                value={totals.paid}
-                                onChange={(e) => handlePaidAmountChange(e.target.value)}
-                                className="w-32 px-3 py-1 border border-gray-300 rounded text-right"
-                            />
-                        </div>
+                                <TableRow className="font-bold text-lg">
+                                    <TableCell>Balance Due</TableCell>
+                                    <TableCell
+                                        className={`text-right ${totals.balance > 0 ? "text-red-600" : "text-green-600"
+                                            }`}
+                                    >
+                                        ₹{totals.balance.toFixed(2)}
+                                    </TableCell>
+                                </TableRow>
+                            </TableBody>
+                        </Table>
+                    </CardContent>
 
-                        <div className="flex justify-between font-bold text-lg">
-                            <span>Balance Due:</span>
-                            <span className={totals.balance > 0 ? 'text-red-600' : 'text-green-600'}>
-                                ₹{totals.balance.toFixed(2)}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="flex space-x-4">
-                        <button
-                            onClick={saveBilling}
-                            className="px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-                        >
-                            Save Billing
-                        </button>
-
-                        <button
-                            onClick={printBill}
-                            className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                        >
+                    <CardFooter className="flex justify-end space-x-4">
+                        <Button variant="outline" onClick={printBill}>
                             Print GST Bill
-                        </button>
-                    </div>
-                </div>
+                        </Button>
+                        <Button onClick={saveBilling} className="bg-green-600 hover:bg-green-700">
+                            Save Billing
+                        </Button>
+                    </CardFooter>
+                </Card>
             )}
         </div>
     );
