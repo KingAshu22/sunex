@@ -38,6 +38,7 @@ export default function CreateEstimate() {
     weight: '',
     rate: '',
     discount: '0',
+    isIncludingGST: false,   // ✅ added
   });
   const [loading, setLoading] = useState(false);
   const [countryOpen, setCountryOpen] = useState(false);
@@ -54,9 +55,10 @@ export default function CreateEstimate() {
   }, []);
 
   const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: type === "checkbox" ? checked : value,
     });
   };
 
@@ -365,6 +367,21 @@ export default function CreateEstimate() {
             onChange={handleChange}
             className="w-full p-2 border rounded"
           />
+        </div>
+
+        {/* isIncludingGST */}
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="isIncludingGST"
+            name="isIncludingGST"
+            checked={formData.isIncludingGST}
+            onChange={handleChange}
+            className="h-4 w-4"
+          />
+          <label htmlFor="isIncludingGST" className="text-sm">
+            Price is including GST
+          </label>
         </div>
 
         {/* Auto-calculated subtotal & total */}

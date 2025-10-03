@@ -18,6 +18,7 @@ export const EstimateSchema = new Schema({
     subtotal: Number,
     discount: Number,
     total: Number,
+    isIncludingGST: Boolean
 });
 
 const Estimate = models.Estimate || model("Estimate", EstimateSchema);
