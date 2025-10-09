@@ -19,7 +19,7 @@ export async function GET(req) {
     await connectToDB();
 
     try {
-        const rateResult = await Rate.findOne({ type });
+        const rateResult = await Rate.findOne({ originalName: type });
 
         if (!rateResult) {
             return NextResponse.json({ error: "Type not found in rates" }, { status: 404 });
@@ -103,15 +103,15 @@ export async function GET(req) {
             fuelCharges = parseFloat(((rateResult.fuelCharges / 100) * baseCharges).toFixed(2));
         } else {
             // fallback logic
-            if (type === "dhl") {
+            if (rateResult.type === "dhl") {
                 fuelCharges = parseFloat(((27.5 / 100) * baseCharges).toFixed(2));
-            } else if (type === "fedex") {
+            } else if (rateResult.type === "fedex") {
                 fuelCharges = parseFloat(((29 / 100) * baseCharges).toFixed(2));
-            } else if (type === "ups") {
+            } else if (rateResult.type === "ups") {
                 fuelCharges = parseFloat(((30.5 / 100) * baseCharges).toFixed(2));
-            } else if (type === "dtdc") {
+            } else if (rateResult.type === "dtdc") {
                 fuelCharges = parseFloat(((36 / 100) * baseCharges).toFixed(2));
-            } else if (["aramex", "orbit"].includes(type)) {
+            } else if (["aramex", "orbit"].includes(rateResult.type)) {
                 fuelCharges = parseFloat(((35.5 / 100) * baseCharges).toFixed(2));
             }
         }
@@ -127,6 +127,7 @@ export async function GET(req) {
 
         return NextResponse.json({
             service: rateResult.service,
+            originalName: rateResult.originalName,
             zone: selectedZone,
             requestedWeight: weight, // ✅ final rounded weight used
             weight: closestWeight,   // ✅ closest db weight used for per-kg rate

@@ -4,8 +4,6 @@ const RateSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      required: true,
-      unique: true,
       trim: true,
       lowercase: true,
     },
@@ -19,6 +17,7 @@ const RateSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    refCode: String,
     rates: [
       {
         kg: {

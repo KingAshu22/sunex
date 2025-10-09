@@ -29,16 +29,22 @@ export default function RateCalculator() {
   const [results, setResults] = useState(null);
 
   useEffect(() => {
-    fetchServices();
     const ut = localStorage.getItem("userType") || "";
     const code = localStorage.getItem("code") || "";
     setUserType(ut);
     setUserCode(code);
+    console.log(`Client - ${userType}, ${userCode}`)
+    fetchServices();
   }, []);
 
   const fetchServices = async () => {
     try {
-      const response = await fetch("/api/services");
+      const response = await fetch("/api/services", {
+        headers: {
+          userType: localStorage.getItem("userType"),
+          userId: localStorage.getItem("code"),
+        },
+      });
       const data = await response.json();
       setServices(data);
     } catch (error) {

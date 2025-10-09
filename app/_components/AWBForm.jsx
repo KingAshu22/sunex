@@ -177,6 +177,8 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [ourBoxes, setOurBoxes] = useState(awb?.ourBoxes || [])
   const [vendorBoxes, setVendorBoxes] = useState(awb?.vendorBoxes || [])
 
+  const [availableTypes, setAvailableTypes] = useState([]);
+
   const userType = typeof window !== "undefined" ? localStorage.getItem("userType") : "";
 const [isClient, setIsClient] = useState(userType === "client");
 
@@ -245,6 +247,7 @@ const [isClient, setIsClient] = useState(userType === "client");
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    fetchServices();
     const fetchRefOptions = async () => {
       const userType = localStorage.getItem("userType") || ""
       const code = localStorage.getItem("code") || ""
@@ -860,6 +863,21 @@ const [isClient, setIsClient] = useState(userType === "client");
     setShowSearchDialog(false)
   }
 
+  const fetchServices = async () => {
+    try {
+      const response = await fetch("/api/services", {
+        headers: {
+          userType: localStorage.getItem("userType"),
+          userId: localStorage.getItem("code"),
+        },
+      });
+      const data = await response.json();
+      setAvailableTypes(data);
+    } catch (error) {
+      console.error("Error fetching services:", error);
+    }
+  };
+
   // Rate fetching function
   const fetchRates = async () => {
     if (!canFetchRates) {
@@ -870,8 +888,7 @@ const [isClient, setIsClient] = useState(userType === "client");
     setFetchingRates(true)
 
     try {
-      const courierTypes = ["dhl", "fedex", "ups", "dtdc", "aramex", "orbit"]
-      const ratePromises = courierTypes.map((type) =>
+      const ratePromises = availableTypes.map((type) =>
         axios
           .get("/api/rate", {
             params: {

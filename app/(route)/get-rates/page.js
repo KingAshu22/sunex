@@ -10,11 +10,10 @@ import { Loader2 } from 'lucide-react'
 import { Countries } from '@/app/constants/country'
 import axios from 'axios'
 
-const availableTypes = ['dhl', 'fedex', 'ups', 'dtdc', 'aramex', 'orbit']
-
 export default function GetRatesPage() {
   const [weight, setWeight] = useState('')
   const [country, setCountry] = useState('')
+  const [availableTypes, setAvailableTypes] = useState([])
   const [showProfit, setShowProfit] = useState(true)
   const [profitPercent, setProfitPercent] = useState('0')
   const [results, setResults] = useState([])
@@ -26,10 +25,26 @@ export default function GetRatesPage() {
   useEffect(() => {
     const ut = localStorage.getItem('userType') || ''
     const c = localStorage.getItem('code') || ''
+    fetchServices();
     setUserType(ut)
     setCode(c)
     if (ut !== 'admin') setShowProfit(false)
   }, [])
+
+  const fetchServices = async () => {
+    try {
+      const response = await fetch("/api/services", {
+        headers: {
+          userType: localStorage.getItem("userType"),
+          userId: localStorage.getItem("code"),
+        },
+      });
+      const data = await response.json();
+      setAvailableTypes(data);
+    } catch (error) {
+      console.error("Error fetching services:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchProfitPercent = async () => {
@@ -206,7 +221,7 @@ export default function GetRatesPage() {
         {results.map(({ type, data }) => (
           <Card key={type}>
             <CardHeader>
-              <CardTitle className="uppercase">{data.service}</CardTitle>
+              <CardTitle className="uppercase">{data.originalName}</CardTitle>
               <p className="text-muted-foreground text-sm">{data.zone} Zone</p>
             </CardHeader>
             <CardContent className="space-y-1 text-sm">

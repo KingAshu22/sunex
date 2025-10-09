@@ -24,12 +24,6 @@ export async function POST(req) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    // Check if rate with same type already exists
-    const existingRate = await Rate.findOne({ type })
-    if (existingRate) {
-      return NextResponse.json({ error: "Rate with this type already exists" }, { status: 409 })
-    }
-
     const newRate = new Rate({
       type,
       service,
