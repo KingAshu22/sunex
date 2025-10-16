@@ -59,7 +59,7 @@ export default function TrackingDetails({ parcelDetails }) {
 
   useEffect(() => {
     const fetchDHLTracking = async () => {
-      if (parcelDetails.rateInfo?.courier === "dhl" && parcelDetails?.forwardingNumber) {
+      if ((parcelDetails.rateInfo?.courier === "dhl" || parcelDetails?.forwardingLink.includes("dhl")) && parcelDetails?.forwardingNumber) {
         setLoading(true)
         setError(null)
 
@@ -87,7 +87,7 @@ export default function TrackingDetails({ parcelDetails }) {
     fetchDHLTracking()
   }, [parcelDetails.rateInfo?.courier, parcelDetails.forwardingNumber])
 
-  if (parcelDetails.rateInfo?.courier === "dhl" && dhlData?.shipments?.[0]) {
+  if ((parcelDetails.rateInfo?.courier === "dhl" || parcelDetails?.forwardingLink.includes("dhl")) && dhlData?.shipments?.[0]) {
     const shipment = dhlData.shipments[0]
     const sortedEvents = [...shipment.events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
 

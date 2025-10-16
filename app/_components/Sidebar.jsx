@@ -48,7 +48,7 @@ export function AppSidebar() {
       items.unshift({ title: "New Booking", url: "/awb/create", icon: Plus });
     }
 
-    if (userType === "admin" || userType === "branch") {
+    if (userType === "admin") {
       items.push(
         { title: "Customers", url: "/customers", icon: Contact },
         { title: "Clients", url: "/clients", icon: User },
@@ -57,6 +57,15 @@ export function AppSidebar() {
         { title: "Estimate", url: "/estimate", icon: IndianRupee },
         { title: "Blogs", url: "/admin-blogs", icon: Rss }
       );
+    }
+
+    if (userType === "branch") {
+      items.push(
+        { title: "Customers", url: "/customers", icon: Contact },
+        { title: "Pickup", url: "/pickup", icon: Truck },
+        { title: "Estimate", url: "/estimate", icon: IndianRupee },
+        { title: "Blogs", url: "/admin-blogs", icon: Rss }
+      )
     }
 
     if (userType === "franchise") {

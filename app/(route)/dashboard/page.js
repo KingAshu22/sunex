@@ -299,18 +299,18 @@ function Dashboard() {
           Welcome back, <span className="text-[#E31E24]">{user.name || "User"}</span>
         </h1>
         <p className="text-sm text-muted-foreground">
-          Dashboard overview for {user.userType ? user.userType.toUpperCase() : "USER"}
+          Dashboard for {user.userType ? user.userType.toUpperCase() : "USER"}
         </p>
       </div>
     </motion.div>
 
-    {(user.userType === "admin" || user.userType === "branch" || user.userType === "franchise") && (
+    {(user.userType === "admin") && (
       <>
         {/* KPI Cards */}
         <motion.div
           {...fadeUp}
           className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${(user.userType === "admin" || user.userType === "branch")
-            ? "xl:grid-cols-6"
+            ? "xl:grid-cols-5"
             : "xl:grid-cols-4"
             } gap-4 mb-8`}
         >
@@ -340,7 +340,7 @@ function Dashboard() {
             accent="from-blue-500 to-indigo-500"
           />
 
-          {(user.userType === "admin" || user.userType === "branch") && (
+          {(user.userType === "admin") && (
             <KPI
               title="Revenue"
               value={niceCurrency(analytics.totalRevenue, currency)}
@@ -459,16 +459,16 @@ function Dashboard() {
             </CardContent>
           </Card>
         </motion.div>
+      </>
+    )}
 
-        {/* Quick actions */}
+            {/* Quick actions */}
         <motion.div {...fadeUp} className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           <ActionCard title="Get Rates" onClick={() => (window.location.href = "/get-rates")} />
           <ActionCard title="PDF Rate" onClick={() => (window.location.href = "/pdf-rate")} />
           <ActionCard title="New Booking" onClick={() => (window.location.href = "/awb/create")} />
           <ActionCard title="All AWBs" onClick={() => (window.location.href = "/awb")} />
         </motion.div>
-      </>
-    )}
   </div>
 );
 }

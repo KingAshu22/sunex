@@ -1600,9 +1600,9 @@ const [isClient, setIsClient] = useState(userType === "client");
                                 </div>
                               </TableCell>
                               <TableCell className="text-xs p-1 uppercase">{rate.type}</TableCell>
-                              <TableCell className="text-xs p-1 font-semibold">₹{rate.totalWithGST}</TableCell>
+                              <TableCell className="text-xs p-1 font-semibold">₹{rate.total}</TableCell>
                               <TableCell className="text-xs p-1">
-                                ₹{(rate.totalWithGST / Number.parseFloat(totalChargeableWeight || 1)).toFixed(2)}
+                                ₹{(rate.total / Number.parseFloat(totalChargeableWeight || 1)).toFixed(2)}
                               </TableCell>
                             </TableRow>
                           ))}
