@@ -8,6 +8,7 @@ import withAuth from "@/lib/withAuth";
 import { clientColumns } from "./clientColumns";
 import { csColumns } from "./csColumns";
 import { ClientDataProvider } from "@/app/_components/ClientDataProvider";
+import { branchColumns } from "./branchColumns";
 
 function AWBTable() {
   const [awbs, setAwbs] = useState([]);
@@ -62,8 +63,10 @@ function AWBTable() {
   return (
     <div className="container w-full px-4">
       <ClientDataProvider>
-        {userType === "admin" || userType === "branch" ?
-        <DataTable columns={adminColumns} data={awbs} />
+        {userType === "admin"
+        ? <DataTable columns={adminColumns} data={awbs} />
+        : userType === "branch"
+        ? <DataTable columns={branchColumns} data={awbs} />
         : userType === "Customer Service"
         ? <DataTable columns={csColumns} data={awbs} />
         : <DataTable columns={clientColumns} data={awbs} />

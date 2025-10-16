@@ -79,7 +79,7 @@ const ShowName = ({ id }) => {
   return <span>{name}</span>;
 };
 
-export const adminColumns = [
+export const branchColumns = [
   {
     accessorKey: "date",
     header: "Date",
@@ -176,6 +176,14 @@ export const adminColumns = [
     },
   },
   {
+    accessorKey: "service",
+    header: "Service",
+    cell: ({ row }) => {
+      const service = row.original?.rateInfo?.courier;
+      return <span>{service}</span>;
+    },
+  },
+  {
     accessorKey: "Weight",
     header: "Weight",
     cell: ({ row }) => {
@@ -206,52 +214,20 @@ export const adminColumns = [
             className="bg-blue-400"
             onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}
           >
-            <Plane className="w-5 h-5" />
+            Docs
             <Barcode className="w-5 h-5" />
           </Button>
           <Button
             className="bg-blue-800"
             onClick={() => router.push(`/edit-awb/${trackingNumber}`)}
           >
-            <Pencil className="w-5 h-5" />
+            Edit
           </Button>
           <Button
             onClick={() => router.push(`/awb/update-track/${trackingNumber}`)}
           >
-            <LayoutDashboard className="w-5 h-5" />
+            Update
           </Button>
-          <Button
-            onClick={() => router.push(`/shipping-invoice/${trackingNumber}`)}
-          >
-            <Plane className="w-5 h-5" />
-          </Button>
-          <Button onClick={() => router.push(`/label/${trackingNumber}`)}>
-            <Barcode className="w-5 h-5" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost">
-                <Trash className="w-5 h-5 text-red-500" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Deleting AWB with Tracking Number:{" "}
-                  <strong>{trackingNumber}</strong> cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => deleteAwb(trackingNumber)}
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       );
     },
