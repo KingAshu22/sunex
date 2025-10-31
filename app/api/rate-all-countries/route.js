@@ -29,7 +29,7 @@ export async function POST(req) {
     }
 
     // Fetch rate data for the selected service
-    const rateResult = await Rate.findOne({ service: selectedService })
+    const rateResult = await Rate.findOne({ originalName: selectedService })
 
     if (!rateResult) {
       return NextResponse.json({ error: `No rates found for service: ${selectedService}` }, { status: 404 })

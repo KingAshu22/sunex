@@ -38,6 +38,23 @@ export async function GET(req) { // 1. Add 'req' as a parameter
           { refCode: userId },
         ],
       };
+    } else if (userType === "client") {
+      // Client user must have a userId
+      if (!userId) {
+        return NextResponse.json(
+          { error: "Client user must have a userId header" },
+          { status: 400 }
+        );
+      }
+
+      console.log(`User is Client (${userId}): fetching specific rates.`);
+      // Client sees public rates (no refCode), OR rates matching their userId, OR rates matching their franchise's userId.
+      query = {
+        $or: [
+          { refCode: { $in: [null, undefined] } },
+          { refCode: userId },
+        ],
+      };
     } else {
       // For any other user (or unauthenticated users), only show public rates.
       console.log("User is public/unknown: fetching only public rates.");

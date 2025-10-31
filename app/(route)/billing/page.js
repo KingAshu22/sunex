@@ -7,6 +7,7 @@ import {
     CardTitle,
     CardContent,
     CardFooter,
+    CardDescription,
 } from "@/components/ui/card";
 import {
     Table,
@@ -19,6 +20,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { 
+    Calendar,
+    Search,
+    FileText,
+    Calculator,
+    DollarSign,
+    Printer,
+    Save,
+    Package,
+    Info,
+    Building2,
+    User,
+    Globe,
+    Loader2
+} from "lucide-react";
 import isAdminAuth from '@/lib/isAdminAuth';
 
 function BillingPage() {
@@ -31,7 +51,7 @@ function BillingPage() {
     const [searchTrackingNumber, setSearchTrackingNumber] = useState('');
     const [searchRefCode, setSearchRefCode] = useState('');
     const [searchCountry, setSearchCountry] = useState('');
-    const [clientOrFranchiseType, setClientOrFranchiseType] = useState(''); // 'client', 'franchise', or ''
+    const [clientOrFranchiseType, setClientOrFranchiseType] = useState('');
     const [billingInfo, setBillingInfo] = useState({
         name: '',
         address: '',
@@ -56,15 +76,23 @@ function BillingPage() {
         balance: 0
     });
 
+    // New states for rate source selection
+    const [rateSource, setRateSource] = useState('awb'); // 'awb' or 'rates'
+    const [availableRates, setAvailableRates] = useState([]);
+    const [selectedRateType, setSelectedRateType] = useState(''); // This will store the selected rate's originalName
+    const [loadingRates, setLoadingRates] = useState(false);
+    const [rateApiErrors, setRateApiErrors] = useState([]);
+
     // Fetch all AWBs on component mount
     useEffect(() => {
         fetchAWBs();
+        fetchAvailableRates();
     }, []);
 
     // Update filtered AWBs when filters change
     useEffect(() => {
         applyFilters();
-    }, [awbs, startDate, endDate, searchTrackingNumber, searchRefCode, searchCountry]);
+    }, [awbs, startDate, endDate, searchTrackingNumber, searchRefCode, searchCountry, rateSource, selectedRateType]);
 
     // Update selected AWBs and billing info when refCode filter is applied
     useEffect(() => {
@@ -99,6 +127,83 @@ function BillingPage() {
         }
     };
 
+    const fetchAvailableRates = async () => {
+        try {
+            const response = await fetch('/api/rates');
+            const data = await response.json();
+            setAvailableRates(data);
+        } catch (error) {
+            console.error('Error fetching rates:', error);
+        }
+    };
+
+    const fetchRateFromAPI = async (rateType, weight, country) => {
+        try {
+            const params = new URLSearchParams({
+                type: rateType,
+                weight: weight.toString(),
+                country: country,
+                profitPercent: '0'
+            });
+            
+            const response = await fetch(`/api/rate?${params}`);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch rate for ${country}`);
+            }
+            
+            const data = await response.json();
+            return data.rate || 0;
+        } catch (error) {
+            console.error('Error fetching rate:', error);
+            return null;
+        }
+    };
+
+    const fetchRatesForAWBs = async (awbList) => {
+        if (!selectedRateType) {
+            setRateApiErrors(['Please select a rate type']);
+            return;
+        }
+
+        setLoadingRates(true);
+        setRateApiErrors([]);
+        const errors = [];
+        
+        const updatedRates = await Promise.all(
+            awbList.map(async (awb) => {
+                const weight = calculateAWBWeight(awb);
+                const country = awb.receiver?.country || 'Unknown';
+                
+                const rate = await fetchRateFromAPI(selectedRateType, weight, country);
+                
+                if (rate === null) {
+                    errors.push(`Failed to fetch rate for AWB ${awb.trackingNumber} (${country})`);
+                    // Fallback to AWB rate
+                    return {
+                        awbId: awb._id,
+                        rate: parseFloat(awb.rateInfo?.rate) || 0,
+                        weight: weight,
+                        country: country,
+                        isFromAPI: false
+                    };
+                }
+                
+                return {
+                    awbId: awb._id,
+                    rate: rate,
+                    weight: weight,
+                    country: country,
+                    isFromAPI: true
+                };
+            })
+        );
+
+        setManualRates(updatedRates);
+        setRateApiErrors(errors);
+        setLoadingRates(false);
+    };
+
     const fetchClientOrFranchiseDetails = async (code, type) => {
         try {
             let url = '';
@@ -121,7 +226,6 @@ function BillingPage() {
             }
         } catch (error) {
             console.error(`Error fetching ${type} details:`, error);
-            // Reset billing info if not found
             setBillingInfo({
                 name: '',
                 address: '',
@@ -131,7 +235,7 @@ function BillingPage() {
         }
     };
 
-    const applyFilters = () => {
+    const applyFilters = async () => {
         let result = [...awbs];
 
         // Filter by date range
@@ -141,7 +245,7 @@ function BillingPage() {
         }
         if (endDate) {
             const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999); // Include entire end day
+            end.setHours(23, 59, 59, 999);
             result = result.filter(awb => new Date(awb.date) <= end);
         }
 
@@ -153,7 +257,7 @@ function BillingPage() {
             );
         }
 
-        // Filter by refCode (client/franchise code)
+        // Filter by refCode
         if (searchRefCode) {
             result = result.filter(awb => awb.refCode === searchRefCode);
         }
@@ -168,37 +272,54 @@ function BillingPage() {
 
         setFilteredAwbs(result);
 
-        // Initialize rates by country
-        const countryRates = {};
-        result.forEach(awb => {
-            const country = awb.receiver?.country || 'Unknown';
-            const weight = parseFloat(awb.rateInfo?.weight) || 0;
-            const rate = parseFloat(awb.rateInfo?.rate) || 0;
+        // Initialize rates based on rate source
+        if (rateSource === 'rates' && selectedRateType) {
+            // Fetch rates from API for all filtered AWBs
+            await fetchRatesForAWBs(result);
+        } else {
+            // Use rates from AWB data (default)
+            const countryRates = {};
+            result.forEach(awb => {
+                const country = awb.receiver?.country || 'Unknown';
+                const weight = parseFloat(awb.rateInfo?.weight) || calculateAWBWeight(awb);
+                const rate = parseFloat(awb.rateInfo?.rate) || 0;
 
-            if (weight > 0) {
-                const ratePerKg = rate / weight;
-                if (!countryRates[country]) {
-                    countryRates[country] = [];
+                if (weight > 0) {
+                    const ratePerKg = rate / weight;
+                    if (!countryRates[country]) {
+                        countryRates[country] = [];
+                    }
+                    countryRates[country].push(ratePerKg);
                 }
-                countryRates[country].push(ratePerKg);
-            }
-        });
+            });
 
-        // Calculate average rate per kg for each country
-        Object.keys(countryRates).forEach(country => {
-            const avgRate = countryRates[country].reduce((a, b) => a + b, 0) / countryRates[country].length;
-            countryRates[country] = avgRate;
-        });
+            // Calculate average rate per kg for each country
+            Object.keys(countryRates).forEach(country => {
+                const avgRate = countryRates[country].reduce((a, b) => a + b, 0) / countryRates[country].length;
+                countryRates[country] = avgRate;
+            });
 
-        setRatesByCountry(countryRates);
+            setRatesByCountry(countryRates);
 
-        // Initialize manual rates for selected AWBs
-        setManualRates(result.map(awb => ({
-            awbId: awb._id,
-            rate: parseFloat(awb.rateInfo?.rate) || 0,
-            weight: parseFloat(awb.rateInfo?.weight) || 0,
-            country: awb.receiver?.country || 'Unknown'
-        })));
+            // Initialize manual rates
+            setManualRates(result.map(awb => ({
+                awbId: awb._id,
+                rate: parseFloat(awb.rateInfo?.rate) || 0,
+                weight: parseFloat(awb.rateInfo?.weight) || calculateAWBWeight(awb),
+                country: awb.receiver?.country || 'Unknown',
+                isFromAPI: false
+            })));
+        }
+    };
+
+    const calculateAWBWeight = (awb) => {
+        const boxes = awb.boxes || [];
+        const ourBoxes = awb.ourBoxes || [];
+        const vendorBoxes = awb.vendorBoxes || [];
+        return [...boxes, ...ourBoxes, ...vendorBoxes].reduce(
+            (sum, box) => sum + (parseFloat(box.chargeableWeight) || 0), 
+            0
+        );
     };
 
     const handleAWBSelection = (awbId) => {
@@ -224,7 +345,7 @@ function BillingPage() {
         setManualRates(prev =>
             prev.map(rate =>
                 rate.awbId === awbId
-                    ? { ...rate, [field]: parseFloat(value) || 0 }
+                    ? { ...rate, [field]: parseFloat(value) || 0, isFromAPI: false }
                     : rate
             )
         );
@@ -238,7 +359,8 @@ function BillingPage() {
                 rate.country === country
                     ? {
                         ...rate,
-                        rate: newRatePerKg * rate.weight
+                        rate: newRatePerKg * rate.weight,
+                        isFromAPI: false
                     }
                     : rate
             )
@@ -267,7 +389,6 @@ function BillingPage() {
         let igstAmount = 0;
 
         if (rateSettings.includeGST) {
-            // If rates include GST, we need to extract it
             const taxRate = rateSettings.igst > 0 ? rateSettings.igst : (rateSettings.cgst + rateSettings.sgst);
             const taxableValue = subtotal / (1 + taxRate / 100);
             const taxAmount = subtotal - taxableValue;
@@ -279,7 +400,6 @@ function BillingPage() {
                 sgstAmount = taxAmount / 2;
             }
         } else {
-            // If rates exclude GST, we need to add it
             if (rateSettings.igst > 0) {
                 igstAmount = (subtotal * rateSettings.igst) / 100;
             } else {
@@ -288,7 +408,7 @@ function BillingPage() {
             }
         }
 
-        const total = subtotal + cgstAmount + sgstAmount + igstAmount;
+        const total = rateSettings.includeGST ? subtotal : subtotal + cgstAmount + sgstAmount + igstAmount;
         const balance = total - totals.paid;
 
         setTotals({
@@ -313,10 +433,29 @@ function BillingPage() {
         }));
     };
 
+    const handleRateSourceChange = async (value) => {
+        setRateSource(value);
+        if (value === 'rates' && selectedRateType && filteredAwbs.length > 0) {
+            await fetchRatesForAWBs(filteredAwbs);
+        } else if (value === 'awb') {
+            // Reset to AWB rates
+            applyFilters();
+        }
+    };
+
+    const handleRateTypeChange = async (value) => {
+        setSelectedRateType(value);
+        if (rateSource === 'rates' && value && filteredAwbs.length > 0) {
+            await fetchRatesForAWBs(filteredAwbs);
+        }
+    };
+
     const saveBilling = async () => {
         try {
             const billingData = {
                 billingInfo,
+                rateSource,
+                selectedRateType: rateSource === 'rates' ? selectedRateType : null,
                 awbs: selectedAwbs.map(id => {
                     const awb = awbs.find(a => a._id === id);
                     const rate = manualRates.find(r => r.awbId === id);
@@ -329,6 +468,7 @@ function BillingPage() {
                         ratePerKg: parseFloat(ratePerKg.toFixed(2)),
                         amount: rate?.rate || 0,
                         country: awb.receiver?.country || "Unknown",
+                        isFromAPI: rate?.isFromAPI || false
                     };
                 }),
                 subtotal: totals.subtotal,
@@ -360,7 +500,6 @@ function BillingPage() {
     };
 
     const printBill = () => {
-        // Create a print-friendly version
         const printWindow = window.open('', '_blank');
 
         printWindow.document.write(`
@@ -368,23 +507,26 @@ function BillingPage() {
         <head>
           <title>GST Invoice</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 40px; }
-            .invoice-header { text-align: center; margin-bottom: 30px; }
-            .invoice-header h1 { margin: 0; color: #333; }
-            .billing-info { margin-bottom: 30px; padding: 15px; border: 1px solid #ddd; }
-            .billing-info h3 { margin-top: 0; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; color: #333; }
+            .invoice-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+            .invoice-header h1 { margin: 0; color: #333; font-size: 28px; }
+            .invoice-meta { display: flex; justify-content: space-between; margin-bottom: 30px; }
+            .billing-info { margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+            .billing-info h3 { margin-top: 0; color: #333; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-            th { background-color: #f5f5f5; }
+            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+            th { background-color: #f8f9fa; font-weight: 600; }
             .totals { margin-top: 20px; }
-            .total-row { font-weight: bold; }
-            .signature { margin-top: 50px; text-align: right; }
+            .total-row { font-weight: bold; font-size: 18px; }
+            .signature { margin-top: 60px; text-align: right; }
+            .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
           </style>
         </head>
         <body>
           <div class="invoice-header">
             <h1>GST TAX INVOICE</h1>
-            <p>Invoice Date: ${new Date().toLocaleDateString()}</p>
+            <p style="color: #666;">Invoice Date: ${new Date().toLocaleDateString('en-IN')}</p>
+            ${rateSource === 'rates' ? `<p style="color: #666;">Rate Type: ${selectedRateType}</p>` : ''}
           </div>
           
           <div class="billing-info">
@@ -397,56 +539,66 @@ function BillingPage() {
           <table>
             <thead>
               <tr>
+                <th>S.No.</th>
                 <th>AWB No.</th>
                 <th>Tracking No.</th>
                 <th>Weight (kg)</th>
-                <th>Rate</th>
+                <th>Rate/kg</th>
                 <th>Country</th>
+                <th>Amount</th>
               </tr>
             </thead>
             <tbody>
-              ${selectedAwbs.map(id => {
-            const awb = awbs.find(a => a._id.$oid === id);
-            const rate = manualRates.find(r => r.awbId === id);
-            return `
+              ${selectedAwbs.map((id, index) => {
+                const awb = awbs.find(a => a._id === id);
+                const rate = manualRates.find(r => r.awbId === id);
+                const ratePerKg = rate?.weight ? rate.rate / rate.weight : 0;
+                return `
                   <tr>
-                    <td>${awb.cNoteNumber || awb.awbNumber || '-'}</td>
-                    <td>${awb.trackingNumber}</td>
-                    <td>${rate?.weight || 0}</td>
+                    <td>${index + 1}</td>
+                    <td>${awb?.cNoteNumber || awb?.awbNumber || '-'}</td>
+                    <td>${awb?.trackingNumber}</td>
+                    <td>${rate?.weight?.toFixed(2) || 0}</td>
+                    <td>₹${ratePerKg.toFixed(2)}</td>
+                    <td>${awb?.receiver?.country || 'Unknown'}</td>
                     <td>₹${(rate?.rate || 0).toFixed(2)}</td>
-                    <td>${awb.receiver?.country || 'Unknown'}</td>
                   </tr>
                 `;
-        }).join('')}
+              }).join('')}
             </tbody>
           </table>
           
           <div class="totals">
-            <table>
+            <table style="width: 50%; margin-left: auto;">
               <tr>
                 <td><strong>Subtotal:</strong></td>
-                <td>₹${totals.subtotal.toFixed(2)}</td>
+                <td style="text-align: right;">₹${totals.subtotal.toFixed(2)}</td>
               </tr>
-              ${totals.cgstAmount > 0 ? `<tr><td><strong>CGST (${rateSettings.cgst}%):</strong></td><td>₹${totals.cgstAmount.toFixed(2)}</td></tr>` : ''}
-              ${totals.sgstAmount > 0 ? `<tr><td><strong>SGST (${rateSettings.sgst}%):</strong></td><td>₹${totals.sgstAmount.toFixed(2)}</td></tr>` : ''}
-              ${totals.igstAmount > 0 ? `<tr><td><strong>IGST (${rateSettings.igst}%):</strong></td><td>₹${totals.igstAmount.toFixed(2)}</td></tr>` : ''}
+              ${totals.cgstAmount > 0 ? `<tr><td><strong>CGST (${rateSettings.cgst}%):</strong></td><td style="text-align: right;">₹${totals.cgstAmount.toFixed(2)}</td></tr>` : ''}
+              ${totals.sgstAmount > 0 ? `<tr><td><strong>SGST (${rateSettings.sgst}%):</strong></td><td style="text-align: right;">₹${totals.sgstAmount.toFixed(2)}</td></tr>` : ''}
+              ${totals.igstAmount > 0 ? `<tr><td><strong>IGST (${rateSettings.igst}%):</strong></td><td style="text-align: right;">₹${totals.igstAmount.toFixed(2)}</td></tr>` : ''}
               <tr class="total-row">
                 <td><strong>TOTAL:</strong></td>
-                <td>₹${totals.total.toFixed(2)}</td>
+                <td style="text-align: right;">₹${totals.total.toFixed(2)}</td>
               </tr>
               <tr>
                 <td><strong>Paid Amount:</strong></td>
-                <td>₹${totals.paid.toFixed(2)}</td>
+                <td style="text-align: right;">₹${totals.paid.toFixed(2)}</td>
               </tr>
               <tr>
                 <td><strong>Balance Due:</strong></td>
-                <td>₹${totals.balance.toFixed(2)}</td>
+                <td style="text-align: right;">₹${totals.balance.toFixed(2)}</td>
               </tr>
             </table>
           </div>
           
           <div class="signature">
+            <p>_______________________</p>
             <p>Authorized Signatory</p>
+          </div>
+          
+          <div class="footer">
+            <p>This is a computer generated invoice</p>
           </div>
         </body>
       </html>
@@ -457,467 +609,612 @@ function BillingPage() {
     };
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold mb-6">Billing Section</h1>
-
-            {/* Filters Section */}
-            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                <h2 className="text-xl font-semibold mb-4">Filter AWBs</h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                        <input
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                        <input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Number</label>
-                        <input
-                            type="text"
-                            value={searchTrackingNumber}
-                            onChange={(e) => setSearchTrackingNumber(e.target.value)}
-                            placeholder="Enter tracking number"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Client/Franchise Code</label>
-                        <input
-                            type="text"
-                            value={searchRefCode}
-                            onChange={(e) => setSearchRefCode(e.target.value)}
-                            placeholder="Enter ref code"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Client/Franchise Type</label>
-                        <select
-                            value={clientOrFranchiseType}
-                            onChange={(e) => setClientOrFranchiseType(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="">Select Type</option>
-                            <option value="client">Client</option>
-                            <option value="franchise">Franchise</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-                        <input
-                            type="text"
-                            value={searchCountry}
-                            onChange={(e) => setSearchCountry(e.target.value)}
-                            placeholder="Enter country name"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* AWB Selection Section */}
-            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">Select AWBs for Billing ({selectedAwbs.length} selected)</h2>
-                    <button
-                        onClick={handleSelectAll}
-                        className={`px-4 py-2 rounded-md text-white ${selectAll ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'
-                            }`}
-                    >
-                        {selectAll ? 'Deselect All' : 'Select All'}
-                    </button>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+            <div className="container mx-auto px-4 py-8 max-w-7xl">
+                {/* Header */}
+                <div className="mb-8">
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                        Billing Management
+                    </h1>
+                    <p className="text-gray-600 dark:text-gray-400">
+                        Create and manage GST invoices for your shipments
+                    </p>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-xs">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th scope="col" className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectAll}
-                                        onChange={handleSelectAll}
-                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                    />
-                                </th>
-                                <th scope="col" className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                <th scope="col" className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracking No.</th>
-                                <th scope="col" className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sender</th>
-                                <th scope="col" className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receiver</th>
-                                <th scope="col" className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                                <th scope="col" className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
-                                <th scope="col" className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight(kg)</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredAwbs.map((awb) => (
-                                <tr key={awb._id}>
-                                    <td className="px-2 py-1 whitespace-nowrap">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedAwbs.includes(awb._id)}
-                                            onChange={() => handleAWBSelection(awb._id)}
-                                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                        />
-                                    </td>
-                                    <td className="px-2 py-1 whitespace-nowrap">{new Date(awb.date).toLocaleDateString("en-IN")}</td>
-                                    <td className="px-2 py-1 whitespace-nowrap">{awb.trackingNumber}</td>
-                                    <td className="px-2 py-1 whitespace-nowrap">{awb.sender?.name.slice(0, 20) || 'Unknown'}</td>
-                                    <td className="px-2 py-1 whitespace-nowrap">{awb.receiver?.name.slice(0, 20) || 'Unknown'}</td>
-                                    <td className="px-2 py-1 whitespace-nowrap">{awb.refCode || 'Unknown'}</td>
-                                    <td className="px-2 py-1 whitespace-nowrap">{awb.receiver?.country.slice(0, 20) || 'Unknown'}</td>
-                                    {/* for weight calculation in awb their is boxes, ourBoxes and vendorBoxes which is an array of object in each object there is chargeableWeight add all chargeableWeight and sum of all of this weight and from every boxes which ever is greater should be shown as weight here */}
-                                    <td className="px-2 py-1 whitespace-nowrap">
-                                        {(() => {
-                                            const boxes = awb.boxes || [];
-                                            const ourBoxes = awb.ourBoxes || [];
-                                            const vendorBoxes = awb.vendorBoxes || [];
-                                            const totalWeight = [...boxes, ...ourBoxes, ...vendorBoxes].reduce((sum, box) => sum + (parseFloat(box.chargeableWeight) || 0), 0);
-                                            return totalWeight.toFixed(2);
-                                        })()}
-                                    </td>
-                                </tr>
-                            ))}
-                            {/* add a row below showing total weight of all filtered awbs, in awb their is boxes, ourBoxes and vendorBoxes which is an array of object in each object there is chargeableWeight add all chargeableWeight and sum of all of this weight and from every boxes which ever is greater should be shown as weight here */}
-                            <tr className="font-bold bg-gray-100">
-                                <td className="px-2 py-1 whitespace-nowrap" colSpan={7}>Total Weight (kg)</td>
-                                <td className="px-2 py-1 whitespace-nowrap">
-                                    {filteredAwbs.reduce((total, awb) => {
-                                        const boxes = awb.boxes || [];
-                                        const ourBoxes = awb.ourBoxes || [];
-                                        const vendorBoxes = awb.vendorBoxes || [];
-                                        const awbWeight = [...boxes, ...ourBoxes, ...vendorBoxes].reduce((sum, box) => sum + (parseFloat(box.chargeableWeight) || 0), 0);
-                                        return total + awbWeight;
-                                    }, 0).toFixed(2)}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    {filteredAwbs.length === 0 && (
-                        <div className="text-center py-4 text-gray-500">No AWBs found matching the filters.</div>
-                    )}
-                </div>
-            </div>
-
-            {/* Billing Information Section */}
-            {selectedAwbs.length > 0 && (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h2 className="text-xl font-semibold mb-4">Billing Information</h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Billing Name</label>
-                            <input
-                                type="text"
-                                value={billingInfo.name}
-                                onChange={(e) => handleBillingInfoChange('name', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                disabled={!billingInfo.isEditable}
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
-                            <input
-                                type="text"
-                                value={billingInfo.gst}
-                                onChange={(e) => handleBillingInfoChange('gst', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                disabled={!billingInfo.isEditable}
-                            />
-                        </div>
-
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Billing Address</label>
-                            <textarea
-                                value={billingInfo.address}
-                                onChange={(e) => handleBillingInfoChange('address', e.target.value)}
-                                rows="3"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                disabled={!billingInfo.isEditable}
-                            ></textarea>
-                        </div>
-
-                        <div className="md:col-span-2">
-                            <button
-                                onClick={() => setBillingInfo(prev => ({ ...prev, isEditable: !prev.isEditable }))}
-                                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
-                            >
-                                {billingInfo.isEditable ? 'Lock Details' : 'Edit Details'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Rate Configuration Section */}
-            {selectedAwbs.length > 0 && (
-                <Card className="mb-6 shadow-lg border">
-                    <CardHeader>
-                        <CardTitle className="text-xl">Rate Configuration</CardTitle>
+                {/* Filters Section */}
+                <Card className="mb-8 shadow-xl border-0">
+                    <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700">
+                        <CardTitle className="flex items-center gap-2">
+                            <Search className="w-5 h-5" />
+                            Filter AWBs
+                        </CardTitle>
+                        <CardDescription>
+                            Search and filter AWBs to include in the billing
+                        </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-8">
-                        {/* GST Inclusion */}
-                        <div>
-                            <Label className="mb-2 block">Are rates including GST?</Label>
-                            <div className="flex space-x-6">
-                                <label className="flex items-center space-x-2">
-                                    <input
-                                        type="radio"
-                                        checked={rateSettings.includeGST}
-                                        onChange={() =>
-                                            setRateSettings((prev) => ({ ...prev, includeGST: true }))
-                                        }
-                                        className="h-4 w-4 text-blue-600"
-                                    />
-                                    <span>Yes</span>
-                                </label>
-                                <label className="flex items-center space-x-2">
-                                    <input
-                                        type="radio"
-                                        checked={!rateSettings.includeGST}
-                                        onChange={() =>
-                                            setRateSettings((prev) => ({ ...prev, includeGST: false }))
-                                        }
-                                        className="h-4 w-4 text-blue-600"
-                                    />
-                                    <span>No</span>
-                                </label>
+                    <CardContent className="pt-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4" />
+                                    Start Date
+                                </Label>
+                                <Input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4" />
+                                    End Date
+                                </Label>
+                                <Input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                    <Package className="w-4 h-4" />
+                                    Tracking Number
+                                </Label>
+                                <Input
+                                    type="text"
+                                    value={searchTrackingNumber}
+                                    onChange={(e) => setSearchTrackingNumber(e.target.value)}
+                                    placeholder="Enter tracking number"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                    <Building2 className="w-4 h-4" />
+                                    Client/Franchise Code
+                                </Label>
+                                <Input
+                                    type="text"
+                                    value={searchRefCode}
+                                    onChange={(e) => setSearchRefCode(e.target.value)}
+                                    placeholder="Enter ref code"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                    <User className="w-4 h-4" />
+                                    Client/Franchise Type
+                                </Label>
+                                <select
+                                    value={clientOrFranchiseType}
+                                    onChange={(e) => setClientOrFranchiseType(e.target.value)}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Select Type</option>
+                                    <option value="client">Client</option>
+                                    <option value="franchise">Franchise</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                    <Globe className="w-4 h-4" />
+                                    Country
+                                </Label>
+                                <Input
+                                    type="text"
+                                    value={searchCountry}
+                                    onChange={(e) => setSearchCountry(e.target.value)}
+                                    placeholder="Enter country name"
+                                />
                             </div>
                         </div>
 
-                        {/* Tax Rates */}
-                        <div>
-                            <h3 className="text-lg font-medium mb-3">Tax Rates</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <Label className="mb-1 block">CGST (%)</Label>
-                                    <Input
-                                        type="number"
-                                        value={rateSettings.cgst}
-                                        onChange={(e) =>
-                                            setRateSettings((prev) => ({
-                                                ...prev,
-                                                cgst: parseFloat(e.target.value) || 0,
-                                            }))
-                                        }
-                                    />
+                        {/* Rate Source Selection */}
+                        <Separator className="my-6" />
+                        
+                        <div className="space-y-4">
+                            <Label className="text-base font-semibold flex items-center gap-2">
+                                <Calculator className="w-5 h-5" />
+                                Rate Calculation Source
+                            </Label>
+                            <RadioGroup value={rateSource} onValueChange={handleRateSourceChange}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                        <RadioGroupItem value="awb" id="awb" className="mt-1" />
+                                        <div className="flex-1">
+                                            <Label htmlFor="awb" className="cursor-pointer font-medium">
+                                                Rate from AWB Data
+                                            </Label>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                                Use the default rates stored in AWB records
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                        <RadioGroupItem value="rates" id="rates" className="mt-1" />
+                                        <div className="flex-1">
+                                            <Label htmlFor="rates" className="cursor-pointer font-medium">
+                                                Rate from Rates Data
+                                            </Label>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                                Use rates from the rate master API
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <Label className="mb-1 block">SGST (%)</Label>
-                                    <Input
-                                        type="number"
-                                        value={rateSettings.sgst}
-                                        onChange={(e) =>
-                                            setRateSettings((prev) => ({
-                                                ...prev,
-                                                sgst: parseFloat(e.target.value) || 0,
-                                            }))
-                                        }
-                                    />
+                            </RadioGroup>
+                            
+                            {rateSource === 'rates' && (
+                                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                                    <Label className="text-sm font-semibold mb-3 block">Select Rate Type</Label>
+                                    <select
+                                        value={selectedRateType}
+                                        onChange={(e) => handleRateTypeChange(e.target.value)}
+                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">Select a rate type</option>
+                                        {availableRates.map((rate) => (
+                                            <option key={rate._id} value={rate.originalName}>
+                                                {rate.originalName} ({rate.type} - {rate.service})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    
+                                    {selectedRateType && (
+                                        <div className="mt-3 flex items-center gap-2">
+                                            <Badge variant="secondary" className="text-sm">
+                                                Selected: {selectedRateType}
+                                            </Badge>
+                                            {loadingRates && (
+                                                <div className="flex items-center gap-2 text-sm text-blue-600">
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Fetching rates...
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                                <div>
-                                    <Label className="mb-1 block">IGST (%)</Label>
-                                    <Input
-                                        type="number"
-                                        value={rateSettings.igst}
-                                        onChange={(e) =>
-                                            setRateSettings((prev) => ({
-                                                ...prev,
-                                                igst: parseFloat(e.target.value) || 0,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                            </div>
+                            )}
+                            
+                            {rateApiErrors.length > 0 && (
+                                <Alert className="bg-yellow-50 border-yellow-200">
+                                    <Info className="h-4 w-4 text-yellow-600" />
+                                    <AlertDescription>
+                                        <div className="text-yellow-800">
+                                            <p className="font-semibold mb-2">Some rates couldn't be fetched:</p>
+                                            <ul className="list-disc list-inside text-sm">
+                                                {rateApiErrors.map((error, index) => (
+                                                    <li key={index}>{error}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </AlertDescription>
+                                </Alert>
+                            )}
                         </div>
+                    </CardContent>
+                </Card>
 
-                        {/* Individual AWB Rates Table */}
-                        <div>
-                            <h3 className="text-lg font-medium mb-3">Individual AWB Rates</h3>
+                {/* AWB Selection Section */}
+                <Card className="mb-8 shadow-xl border-0">
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle>Select AWBs for Billing</CardTitle>
+                                <CardDescription className="mt-2">
+                                    {selectedAwbs.length} of {filteredAwbs.length} AWBs selected
+                                </CardDescription>
+                            </div>
+                            <Button
+                                onClick={handleSelectAll}
+                                variant={selectAll ? "destructive" : "default"}
+                                size="sm"
+                            >
+                                {selectAll ? 'Deselect All' : 'Select All'}
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="overflow-x-auto rounded-lg border">
                             <Table>
                                 <TableHeader>
-                                    <TableRow>
-                                        <TableHead>AWB No.</TableHead>
+                                    <TableRow className="bg-gray-50 dark:bg-gray-800">
+                                        <TableHead className="w-12">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectAll}
+                                                onChange={handleSelectAll}
+                                                className="h-4 w-4 rounded border-gray-300"
+                                            />
+                                        </TableHead>
+                                        <TableHead>Date</TableHead>
                                         <TableHead>Tracking No.</TableHead>
-                                        <TableHead>Weight (kg)</TableHead>
+                                        <TableHead>Sender</TableHead>
+                                        <TableHead>Receiver</TableHead>
+                                        <TableHead>Client</TableHead>
                                         <TableHead>Country</TableHead>
-                                        <TableHead>Rate/kg (₹)</TableHead>
-                                        <TableHead>Amount (₹)</TableHead>
+                                        <TableHead>Weight (kg)</TableHead>
+                                        {rateSource === 'rates' && <TableHead>Rate Source</TableHead>}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {manualRates
-                                        .filter((rate) => selectedAwbs.includes(rate.awbId))
-                                        .map((rate) => {
-                                            const awb = awbs.find((a) => a._id === rate.awbId);
-                                            const ratePerKg =
-                                                rate.weight > 0 ? rate.rate / rate.weight : 0;
-
-                                            return (
-                                                <TableRow key={rate.awbId}>
-                                                    <TableCell>{awb?.cNoteNumber || awb?.awbNumber || "-"}</TableCell>
-                                                    <TableCell>{awb?.trackingNumber}</TableCell>
+                                    {filteredAwbs.map((awb) => {
+                                        const weight = calculateAWBWeight(awb);
+                                        const rate = manualRates.find(r => r.awbId === awb._id);
+                                        return (
+                                            <TableRow key={awb._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                                <TableCell>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedAwbs.includes(awb._id)}
+                                                        onChange={() => handleAWBSelection(awb._id)}
+                                                        className="h-4 w-4 rounded border-gray-300"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="font-medium">
+                                                    {new Date(awb.date).toLocaleDateString("en-IN")}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline">{awb.trackingNumber}</Badge>
+                                                </TableCell>
+                                                <TableCell className="truncate max-w-[150px]">
+                                                    {awb.sender?.name || 'Unknown'}
+                                                </TableCell>
+                                                <TableCell className="truncate max-w-[150px]">
+                                                    {awb.receiver?.name || 'Unknown'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge>{awb.refCode || 'N/A'}</Badge>
+                                                </TableCell>
+                                                <TableCell>{awb.receiver?.country || 'Unknown'}</TableCell>
+                                                <TableCell className="font-semibold">
+                                                    {weight.toFixed(2)}
+                                                </TableCell>
+                                                {rateSource === 'rates' && (
                                                     <TableCell>
-                                                        <Input
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={rate.weight}
-                                                            onChange={(e) =>
-                                                                handleRateChange(rate.awbId, "weight", e.target.value)
-                                                            }
-                                                            className="w-24"
-                                                        />
+                                                        {rate?.isFromAPI ? (
+                                                            <Badge variant="secondary" className="bg-green-100">API</Badge>
+                                                        ) : (
+                                                            <Badge variant="outline">AWB</Badge>
+                                                        )}
                                                     </TableCell>
-                                                    <TableCell>{rate.country}</TableCell>
-                                                    <TableCell>
-                                                        <Input
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={ratePerKg.toFixed(2)}
-                                                            onChange={(e) => {
-                                                                const newRatePerKg = parseFloat(e.target.value) || 0;
-                                                                handleRateChange(
-                                                                    rate.awbId,
-                                                                    "rate",
-                                                                    newRatePerKg * rate.weight
-                                                                );
-                                                            }}
-                                                            className="w-28"
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Input
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={rate.rate}
-                                                            onChange={(e) =>
-                                                                handleRateChange(rate.awbId, "rate", e.target.value)
-                                                            }
-                                                            className="w-32"
-                                                        />
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
+                                                )}
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
+                            
+                            {filteredAwbs.length === 0 && (
+                                <div className="text-center py-12 text-gray-500">
+                                    <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                                    <p>No AWBs found matching the filters</p>
+                                </div>
+                            )}
+                            
+                            {filteredAwbs.length > 0 && (
+                                <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-t">
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-semibold">Total Weight:</span>
+                                        <Badge variant="secondary" className="text-lg">
+                                            {filteredAwbs.reduce((total, awb) => total + calculateAWBWeight(awb), 0).toFixed(2)} kg
+                                        </Badge>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
-            )}
 
-            {/* Billing Summary Section */}
-            {selectedAwbs.length > 0 && (
-                <Card className="mb-10 shadow-lg border">
-                    <CardHeader>
-                        <CardTitle className="text-xl">Billing Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableBody>
-                                <TableRow>
-                                    <TableCell className="font-medium">Subtotal</TableCell>
-                                    <TableCell className="text-right">
-                                        ₹{totals.subtotal.toFixed(2)}
-                                    </TableCell>
-                                </TableRow>
+                {/* Billing Information Section */}
+                {selectedAwbs.length > 0 && (
+                    <Card className="mb-8 shadow-xl border-0">
+                        <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-gray-800 dark:to-gray-700">
+                            <CardTitle className="flex items-center gap-2">
+                                <FileText className="w-5 h-5" />
+                                Billing Information
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label>Billing Name</Label>
+                                    <Input
+                                        type="text"
+                                        value={billingInfo.name}
+                                        onChange={(e) => handleBillingInfoChange('name', e.target.value)}
+                                        disabled={!billingInfo.isEditable}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>GST Number</Label>
+                                    <Input
+                                        type="text"
+                                        value={billingInfo.gst}
+                                        onChange={(e) => handleBillingInfoChange('gst', e.target.value)}
+                                        disabled={!billingInfo.isEditable}
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2 space-y-2">
+                                    <Label>Billing Address</Label>
+                                    <textarea
+                                        value={billingInfo.address}
+                                        onChange={(e) => handleBillingInfoChange('address', e.target.value)}
+                                        rows="3"
+                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        disabled={!billingInfo.isEditable}
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <Button
+                                        onClick={() => setBillingInfo(prev => ({ ...prev, isEditable: !prev.isEditable }))}
+                                        variant="outline"
+                                    >
+                                        {billingInfo.isEditable ? 'Lock Details' : 'Edit Details'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Rate Configuration Section */}
+                {selectedAwbs.length > 0 && (
+                    <Card className="mb-8 shadow-xl border-0">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Calculator className="w-5 h-5" />
+                                Rate Configuration
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-8">
+                            {/* GST Inclusion */}
+                            <div className="space-y-4">
+                                <Label className="text-base font-semibold">GST Settings</Label>
+                                <RadioGroup 
+                                    value={rateSettings.includeGST ? "yes" : "no"}
+                                    onValueChange={(value) => setRateSettings(prev => ({ ...prev, includeGST: value === "yes" }))}
+                                >
+                                    <div className="flex space-x-6">
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="yes" id="gst-yes" />
+                                            <Label htmlFor="gst-yes">Rates include GST</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="no" id="gst-no" />
+                                            <Label htmlFor="gst-no">Rates exclude GST</Label>
+                                        </div>
+                                    </div>
+                                </RadioGroup>
+                            </div>
+
+                            <Separator />
+
+                            {/* Tax Rates */}
+                            <div className="space-y-4">
+                                <Label className="text-base font-semibold">Tax Rates</Label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>CGST (%)</Label>
+                                        <Input
+                                            type="number"
+                                            value={rateSettings.cgst}
+                                            onChange={(e) =>
+                                                setRateSettings((prev) => ({
+                                                    ...prev,
+                                                    cgst: parseFloat(e.target.value) || 0,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>SGST (%)</Label>
+                                        <Input
+                                            type="number"
+                                            value={rateSettings.sgst}
+                                            onChange={(e) =>
+                                                setRateSettings((prev) => ({
+                                                    ...prev,
+                                                    sgst: parseFloat(e.target.value) || 0,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>IGST (%)</Label>
+                                        <Input
+                                            type="number"
+                                            value={rateSettings.igst}
+                                            onChange={(e) =>
+                                                setRateSettings((prev) => ({
+                                                    ...prev,
+                                                    igst: parseFloat(e.target.value) || 0,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Individual AWB Rates Table */}
+                            <div className="space-y-4">
+                                <Label className="text-base font-semibold">Individual AWB Rates</Label>
+                                <div className="overflow-x-auto rounded-lg border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="bg-gray-50 dark:bg-gray-800">
+                                                <TableHead>AWB No.</TableHead>
+                                                <TableHead>Tracking No.</TableHead>
+                                                <TableHead>Weight (kg)</TableHead>
+                                                <TableHead>Country</TableHead>
+                                                <TableHead>Rate/kg (₹)</TableHead>
+                                                <TableHead>Amount (₹)</TableHead>
+                                                {rateSource === 'rates' && <TableHead>Source</TableHead>}
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {manualRates
+                                                .filter((rate) => selectedAwbs.includes(rate.awbId))
+                                                .map((rate) => {
+                                                    const awb = awbs.find((a) => a._id === rate.awbId);
+                                                    const ratePerKg = rate.weight > 0 ? rate.rate / rate.weight : 0;
+
+                                                    return (
+                                                        <TableRow key={rate.awbId}>
+                                                            <TableCell>
+                                                                <Badge variant="outline">
+                                                                    {awb?.cNoteNumber || awb?.awbNumber || "-"}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell>{awb?.trackingNumber}</TableCell>
+                                                            <TableCell>
+                                                                <Input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={rate.weight}
+                                                                    onChange={(e) =>
+                                                                        handleRateChange(rate.awbId, "weight", e.target.value)
+                                                                    }
+                                                                    className="w-24"
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge>{rate.country}</Badge>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={ratePerKg.toFixed(2)}
+                                                                    onChange={(e) => {
+                                                                        const newRatePerKg = parseFloat(e.target.value) || 0;
+                                                                        handleRateChange(
+                                                                            rate.awbId,
+                                                                            "rate",
+                                                                            newRatePerKg * rate.weight
+                                                                        );
+                                                                    }}
+                                                                    className="w-28"
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={rate.rate}
+                                                                    onChange={(e) =>
+                                                                        handleRateChange(rate.awbId, "rate", e.target.value)
+                                                                    }
+                                                                    className="w-32"
+                                                                />
+                                                            </TableCell>
+                                                            {rateSource === 'rates' && (
+                                                                <TableCell>
+                                                                    {rate.isFromAPI ? (
+                                                                        <Badge className="bg-green-100 text-green-800">API</Badge>
+                                                                    ) : (
+                                                                        <Badge variant="outline">Manual</Badge>
+                                                                    )}
+                                                                </TableCell>
+                                                            )}
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Billing Summary Section */}
+                {selectedAwbs.length > 0 && (
+                    <Card className="shadow-xl border-0">
+                        <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-700">
+                            <CardTitle className="flex items-center gap-2">
+                                <DollarSign className="w-5 h-5" />
+                                Billing Summary
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center py-3 border-b">
+                                    <span className="text-gray-600">Subtotal</span>
+                                    <span className="font-semibold text-lg">₹{totals.subtotal.toFixed(2)}</span>
+                                </div>
 
                                 {totals.cgstAmount > 0 && (
-                                    <TableRow>
-                                        <TableCell className="font-medium">
-                                            CGST ({rateSettings.cgst}%)
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            ₹{totals.cgstAmount.toFixed(2)}
-                                        </TableCell>
-                                    </TableRow>
+                                    <div className="flex justify-between items-center py-3 border-b">
+                                        <span className="text-gray-600">CGST ({rateSettings.cgst}%)</span>
+                                        <span className="font-semibold">₹{totals.cgstAmount.toFixed(2)}</span>
+                                    </div>
                                 )}
 
                                 {totals.sgstAmount > 0 && (
-                                    <TableRow>
-                                        <TableCell className="font-medium">
-                                            SGST ({rateSettings.sgst}%)
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            ₹{totals.sgstAmount.toFixed(2)}
-                                        </TableCell>
-                                    </TableRow>
+                                    <div className="flex justify-between items-center py-3 border-b">
+                                        <span className="text-gray-600">SGST ({rateSettings.sgst}%)</span>
+                                        <span className="font-semibold">₹{totals.sgstAmount.toFixed(2)}</span>
+                                    </div>
                                 )}
 
                                 {totals.igstAmount > 0 && (
-                                    <TableRow>
-                                        <TableCell className="font-medium">
-                                            IGST ({rateSettings.igst}%)
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            ₹{totals.igstAmount.toFixed(2)}
-                                        </TableCell>
-                                    </TableRow>
+                                    <div className="flex justify-between items-center py-3 border-b">
+                                        <span className="text-gray-600">IGST ({rateSettings.igst}%)</span>
+                                        <span className="font-semibold">₹{totals.igstAmount.toFixed(2)}</span>
+                                    </div>
                                 )}
 
-                                <TableRow className="bg-gray-50 font-bold text-lg">
-                                    <TableCell>Total</TableCell>
-                                    <TableCell className="text-right">
-                                        ₹{totals.total.toFixed(2)}
-                                    </TableCell>
-                                </TableRow>
+                                <div className="flex justify-between items-center py-4 bg-gray-50 dark:bg-gray-800 px-4 rounded-lg">
+                                    <span className="font-bold text-xl">Total</span>
+                                    <span className="font-bold text-2xl text-blue-600">₹{totals.total.toFixed(2)}</span>
+                                </div>
 
-                                <TableRow>
-                                    <TableCell className="font-medium">Paid Amount</TableCell>
-                                    <TableCell className="text-right">
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            value={totals.paid}
-                                            onChange={(e) => handlePaidAmountChange(e.target.value)}
-                                            className="w-32 text-right"
-                                        />
-                                    </TableCell>
-                                </TableRow>
+                                <div className="flex justify-between items-center py-3">
+                                    <span className="text-gray-600">Paid Amount</span>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={totals.paid}
+                                        onChange={(e) => handlePaidAmountChange(e.target.value)}
+                                        className="w-40 text-right"
+                                    />
+                                </div>
 
-                                <TableRow className="font-bold text-lg">
-                                    <TableCell>Balance Due</TableCell>
-                                    <TableCell
-                                        className={`text-right ${totals.balance > 0 ? "text-red-600" : "text-green-600"
-                                            }`}
-                                    >
+                                <div className="flex justify-between items-center py-4 bg-gray-50 dark:bg-gray-800 px-4 rounded-lg">
+                                    <span className="font-bold text-lg">Balance Due</span>
+                                    <span className={`font-bold text-xl ${totals.balance > 0 ? "text-red-600" : "text-green-600"}`}>
                                         ₹{totals.balance.toFixed(2)}
-                                    </TableCell>
-                                </TableRow>
-                            </TableBody>
-                        </Table>
-                    </CardContent>
+                                    </span>
+                                </div>
+                            </div>
+                        </CardContent>
 
-                    <CardFooter className="flex justify-end space-x-4">
-                        <Button variant="outline" onClick={printBill}>
-                            Print GST Bill
-                        </Button>
-                        <Button onClick={saveBilling} className="bg-green-600 hover:bg-green-700">
-                            Save Billing
-                        </Button>
-                    </CardFooter>
-                </Card>
-            )}
+                        <CardFooter className="flex justify-end gap-4 bg-gray-50 dark:bg-gray-800">
+                            <Button variant="outline" onClick={printBill} size="lg">
+                                <Printer className="w-4 h-4 mr-2" />
+                                Print GST Bill
+                            </Button>
+                            <Button onClick={saveBilling} size="lg" className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+                                <Save className="w-4 h-4 mr-2" />
+                                Save Billing
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                )}
+            </div>
         </div>
     );
 }

@@ -217,7 +217,7 @@ export default function GetRatesPage() {
                     const clientP = Number(clientMatch?.profitPercent ?? clientRest?.profitPercent ?? 0);
 
                     let franchiseP = 0;
-                    if (client?.owner) {
+                    if (client?.owner !== "admin") {
                         const franchiseRes = await axios.get(`/api/franchises/${client.owner}`);
                         const franchise = Array.isArray(franchiseRes.data) ? franchiseRes.data[0] : franchiseRes.data;
                         const fRates = franchise?.rates || [];
