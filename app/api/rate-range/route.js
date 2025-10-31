@@ -29,14 +29,25 @@ export async function POST(req) {
       console.error("Error getting country name:", error);
     }
 
-    // Generate weights array
+    // Generate weights array with variable increment
     const weights = [];
     let currentWeight = Number.parseFloat(startWeight);
     const endWeightFloat = Number.parseFloat(endWeight);
 
-    while (currentWeight <= endWeightFloat) {
+    while (currentWeight <= endWeightFloat + 0.0001) {
       weights.push(currentWeight.toFixed(1));
-      currentWeight += 1;
+
+      // Increment logic:
+      // - For weights < 20, increment by 0.5
+      // - For weights ≥ 20, increment by 1
+      if (currentWeight < 20) {
+        currentWeight += 0.5;
+      } else {
+        currentWeight += 1;
+      }
+
+      // Prevent floating-point precision issues
+      currentWeight = Number(currentWeight.toFixed(1));
     }
 
     // Fetch rates for all selected services using their 'originalName'
