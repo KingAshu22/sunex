@@ -411,7 +411,7 @@ const [isClient, setIsClient] = useState(userType === "client");
         const code = localStorage.getItem("code") || ""
         const normCountry = receiverCountry.trim().toLowerCase()
 
-        if (ut === "admin") {
+        if (ut === "admin" || ut === "branch") {
           // Admin enters profit manually - do nothing here
           setLoading(false)
           return
@@ -872,6 +872,7 @@ const [isClient, setIsClient] = useState(userType === "client");
         },
       });
       const data = await response.json();
+      console.log("Fetched services:", data);
       setAvailableTypes(data);
     } catch (error) {
       console.error("Error fetching services:", error);

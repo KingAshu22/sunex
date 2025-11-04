@@ -18,6 +18,9 @@ export async function GET(req) { // 1. Add 'req' as a parameter
       // Admin sees all rates, so the query remains empty to fetch all documents.
       // No changes needed for the query object.
       console.log("User is Admin: fetching all rates.");
+    } else if (userType === "branch") {
+      // Branch sees all rates, so the query remains empty to fetch all documents.
+      console.log("User is Branch: fetching all rates.");
     } else if (userType === "franchise") {
       // Franchise user must have a userId
       if (!userId) {
