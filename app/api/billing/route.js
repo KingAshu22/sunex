@@ -1,56 +1,76 @@
-import { NextResponse } from "next/server";
-import { connectToDB } from "@/app/_utils/mongodb";
-import Billing from "@/models/Billing";
+import { NextResponse } from "next/server"
+import { connectToDB } from "@/app/_utils/mongodb"
+import Billing from "@/models/Billing"
 
 // Function to get current financial year string like "2025-26"
 function getFinancialYear() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth() + 1; // April = 4
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = today.getMonth() + 1 // April = 4
   if (month >= 4) {
-    return `${year}-${String(year + 1).slice(-2)}`;
+    return `${year}-${String(year + 1).slice(-2)}`
   } else {
-    return `${year - 1}-${String(year).slice(-2)}`;
+    return `${year - 1}-${String(year).slice(-2)}`
+  }
+}
+
+export async function GET(req) {
+  try {
+    await connectToDB()
+
+    const { searchParams } = new URL(req.url)
+    const status = searchParams.get("status")
+    const year = searchParams.get("year")
+
+    const query = {}
+
+    if (status === "paid") {
+      query.balance = 0
+    } else if (status === "pending") {
+      query.balance = { $gt: 0 }
+    }
+
+    if (year) {
+      query.financialYear = year
+    }
+
+    const bills = await Billing.find(query).sort({ createdAt: -1 })
+    return NextResponse.json(bills)
+  } catch (error) {
+    console.error("Error fetching bills:", error)
+    return NextResponse.json({ error: "Failed to fetch bills" }, { status: 500 })
   }
 }
 
 export async function POST(req) {
   try {
-    await connectToDB();
-    const data = await req.json();
+    await connectToDB()
+    const data = await req.json()
 
-    const financialYear = getFinancialYear();
+    const financialYear = getFinancialYear()
 
     // Find last bill of this financial year
-    const lastBill = await Billing.findOne({ financialYear })
-      .sort({ createdAt: -1 })
-      .exec();
+    const lastBill = await Billing.findOne({ financialYear }).sort({ createdAt: -1 }).exec()
 
-    let nextNumber = "0001";
+    let nextNumber = "0001"
     if (lastBill) {
-      const lastNumber = parseInt(lastBill.billNumber.split("/")[1], 10);
-      nextNumber = String(lastNumber + 1).padStart(4, "0");
+      const lastNumber = Number.parseInt(lastBill.billNumber.split("/")[1], 10)
+      nextNumber = String(lastNumber + 1).padStart(4, "0")
     }
 
-    const billNumber = `${financialYear}/${nextNumber}`;
+    const billNumber = `${financialYear}/${nextNumber}`
 
     const newBill = new Billing({
       ...data,
       financialYear,
       billNumber,
-    });
+    })
 
-    await newBill.save();
+    await newBill.save()
 
-    return NextResponse.json(
-      { message: "Bill created successfully", bill: newBill },
-      { status: 201 }
-    );
+    return NextResponse.json({ message: "Bill created successfully", bill: newBill }, { status: 201 })
   } catch (err) {
-    console.error("Error creating bill:", err);
-    return NextResponse.json(
-      { error: "Failed to create bill" },
-      { status: 500 }
-    );
+    console.error("Error creating bill:", err)
+    return NextResponse.json({ error: "Failed to create bill" }, { status: 500 })
   }
 }

@@ -1012,11 +1012,13 @@ const [isClient, setIsClient] = useState(userType === "client");
           rateInfo: {
             courier: selectedCourier,
             zone: selectedRate.zone,
+            weight: selectedRate.closestDbWeight,
             rate: selectedRate.rate,
-            baseCharge: selectedRate.baseCharge,
-            totalWithGST: selectedRate.totalWithGST,
+            baseCharge: selectedRate.baseRate + selectedRate.profitCharges,
+            fuelSurcharge: selectedRate.fuelCharges,
+            otherCharges: selectedRate.extraChargeTotal,
             GST: selectedRate.GST,
-            weight: selectedRate.weight,
+            totalWithGST: selectedRate.total,
           },
         }),
       }

@@ -12,7 +12,7 @@ export default function BillPage() {
 
   useEffect(() => {
     const fetchBill = async () => {
-      const res = await fetch(`/api/billing/${year}/${billNo}`);
+      const res = await fetch(`/api/billing/year/${year}/${billNo}`);
       if (res.ok) {
         const data = await res.json();
         setBill(data);

@@ -33,11 +33,13 @@ const AwbSchema = new Schema({
   rateInfo: {
     courier: String,
     zone: String,
+    weight: String,
     rate: String,
     baseCharge: String,
-    totalWithGST: String,
+    fuelSurcharge: String,
+    otherCharges: String,
     GST: String,
-    weight: String,
+    totalWithGST: String,
   },
 });
 
