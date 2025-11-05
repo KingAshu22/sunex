@@ -173,7 +173,7 @@ function BillingListPage() {
               <div className="flex gap-2">
                 <Badge variant="outline">{bills.length} Bills</Badge>
                 <Badge className="bg-green-100 text-green-800">
-                  ₹{bills.reduce((sum, b) => sum + b.total, 0).toFixed(2)}
+                  ₹{bills.reduce((sum, b) => sum + b.total, 0)?.toFixed(2)}
                 </Badge>
               </div>
             </div>
@@ -204,12 +204,12 @@ function BillingListPage() {
                         <TableCell>
                           <Badge variant="secondary">{bill.awbs?.length || 0} AWBs</Badge>
                         </TableCell>
-                        <TableCell className="font-semibold">₹{bill.total.toFixed(2)}</TableCell>
+                        <TableCell className="font-semibold">₹{bill.total?.toFixed(2)}</TableCell>
                         <TableCell>
                           {bill.balance === 0 ? (
                             <Badge className="bg-green-100 text-green-800">Paid</Badge>
                           ) : (
-                            <Badge className="bg-yellow-100 text-yellow-800">Pending: ₹{bill.balance.toFixed(2)}</Badge>
+                            <Badge className="bg-yellow-100 text-yellow-800">Pending: ₹{bill.balance?.toFixed(2)}</Badge>
                           )}
                         </TableCell>
                         <TableCell>

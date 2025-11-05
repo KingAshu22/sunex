@@ -11,11 +11,16 @@ const BillingSchema = new Schema({
   awbs: [
     {
       awbId: { type: Schema.Types.ObjectId, ref: "Awb" },
+      date: Date,
       trackingNumber: String,
+      consigneeName: String,
       weight: Number,
-      ratePerKg: Number,
-      amount: Number,
       country: String,
+      service: String,
+      baseCharge: Number,
+      fuelSurcharge: Number,
+      otherCharges: Number,
+      subtotal: Number,
     },
   ],
   subtotal: Number,
