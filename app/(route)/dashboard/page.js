@@ -63,7 +63,7 @@ function Dashboard() {
       const response = await axios.get("/api/awb", {
         headers: { userType, userId },
       });
-      setAWBData(response.data || []);
+      setAWBData(response.data.data || []);
     } catch (error) {
       console.error("Error fetching AWB data:", error);
     } finally {

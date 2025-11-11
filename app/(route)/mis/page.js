@@ -55,7 +55,7 @@ function AllAWBsMISPage() {
       const clientsData = await clientsResponse.json()
       const franchisesData = await franchisesResponse.json()
 
-      setAwbs(awbData)
+      setAwbs(awbData.data)
       setClients(clientsData)
       setFranchises(franchisesData)
 

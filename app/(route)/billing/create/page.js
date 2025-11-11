@@ -96,7 +96,7 @@ function BillingCreatePage() {
   const filteredClientFranchiseList = useMemo(() => {
     if (!clientFranchiseSearch) return clientFranchiseList
     return clientFranchiseList.filter(
-      (item) => item.name.toLowerCase().includes(clientFranchiseSearch.toLowerCase()) || item.code.toLowerCase().includes(clientFranchiseSearch.toLowerCase())
+      (item) => item.companyName?.toLowerCase().includes(clientFranchiseSearch.toLowerCase()) || item.name.toLowerCase().includes(clientFranchiseSearch.toLowerCase()) || item.code.toLowerCase().includes(clientFranchiseSearch.toLowerCase())
     )
   }, [clientFranchiseList, clientFranchiseSearch])
 
@@ -198,7 +198,7 @@ function BillingCreatePage() {
   // --- Event Handlers ---
   const handleSelectClientFranchise = (item) => {
     setSelectedClientFranchise(item); setShowClientDropdown(false); setClientFranchiseSearch("");
-    setBillingInfo({ name: item.name || item.companyName || "", address: item.address || "", gst: item.gstNo || item.gst || "" })
+    setBillingInfo({ name: item.companyName || item.name || "", address: item.address || "", gst: item.gstNo || item.gst || "" })
   }
   const handleAWBSelection = (awbId) => { setSelectedAwbs((prev) => (prev.includes(awbId) ? prev.filter((id) => id !== awbId) : [...prev, awbId])); setSelectAll(false) }
   const handleRateChange = (awbId, field, value) => {
@@ -287,7 +287,7 @@ function BillingCreatePage() {
                     <div className="max-h-64 overflow-y-auto">
                       {filteredClientFranchiseList.length > 0 ? (filteredClientFranchiseList.map((item) => (
                         <button key={`${item.type}-${item.code}`} onClick={() => handleSelectClientFranchise(item)} className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex justify-between items-center border-b last:border-b-0">
-                          <div><p className="font-medium">{item.name || item.companyName}</p><p className="text-sm text-gray-500">{item.code}</p></div><Badge variant="outline">{item.type}</Badge>
+                          <div><p className="font-medium">{item.companyName || item.name}</p><p className="text-sm text-gray-500">{item.code}</p></div><Badge variant="outline">{item.type}</Badge>
                         </button>
                       ))) : (<div className="p-4 text-center text-gray-500">No results found</div>)}
                     </div>

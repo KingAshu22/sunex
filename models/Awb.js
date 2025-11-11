@@ -32,6 +32,7 @@ const AwbSchema = new Schema({
   parcelValue: Number,
   rateInfo: {
     courier: String,
+    service: String,
     zone: String,
     weight: String,
     rate: String,

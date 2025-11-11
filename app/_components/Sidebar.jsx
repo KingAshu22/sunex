@@ -8,6 +8,9 @@ import {
   Truck,
   Rss,
   IndianRupee,
+  ReceiptIndianRupee,
+  Percent,
+  Info,
 } from "lucide-react";
 
 import {
@@ -53,9 +56,12 @@ export function AppSidebar() {
         { title: "Customers", url: "/customers", icon: Contact },
         { title: "Clients", url: "/clients", icon: User },
         { title: "Franchise", url: "/franchise", icon: User },
+        { title: "Rate", url: "/rates", icon: Percent },
+        { title: "Billing", url: "/billing", icon: IndianRupee },
+        { title: "MIS", url: "/mis", icon: Info },
         { title: "Pickup", url: "/pickup", icon: Truck },
         { title: "Estimate", url: "/estimate", icon: IndianRupee },
-        { title: "Blogs", url: "/admin-blogs", icon: Rss }
+        { title: "Blogs", url: "/admin-blogs", icon: Rss },
       );
     }
 
