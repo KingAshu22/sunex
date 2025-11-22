@@ -75,7 +75,7 @@ function BillingCreatePage() {
         const franchisesData = await franchisesRes.json()
         const ratesData = await ratesRes.json()
 
-        setAllAwbs(awbsData)
+        setAllAwbs(awbsData.data)
         setAvailableRates(ratesData)
 
         const combined = [

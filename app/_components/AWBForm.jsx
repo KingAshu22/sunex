@@ -898,6 +898,10 @@ const [isClient, setIsClient] = useState(userType === "client");
               country: receiverCountry,
               profitPercent,
             },
+            headers: {
+              userType: localStorage.getItem("userType"),
+              userId: localStorage.getItem("code"),
+            },
           })
           .then((response) => ({
             type,

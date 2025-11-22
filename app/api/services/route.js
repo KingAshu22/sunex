@@ -2,85 +2,72 @@ import { NextResponse } from "next/server";
 import { connectToDB } from "@/app/_utils/mongodb";
 import Rate from "@/models/Rate";
 
-export async function GET(req) { // 1. Add 'req' as a parameter
+// This is the GET handler for the /api/services endpoint
+export async function GET(req) { 
   try {
     await connectToDB();
 
+    // Read user details from request headers
     const userType = req.headers.get("userType");
     const userId = req.headers.get("userId");
-    console.log("Server User Type - ", userType)
+    console.log(`[API/SERVICES] Request from userType: ${userType}, userId: ${userId}`);
 
-    // 2. Create a dynamic query object
+    // Create a dynamic query object
     let query = {};
 
-    // 3. Build the query based on the userType
-    if (userType === "admin") {
-      // Admin sees all rates, so the query remains empty to fetch all documents.
-      // No changes needed for the query object.
-      console.log("User is Admin: fetching all rates.");
-    } else if (userType === "branch") {
-      // Branch sees all rates, so the query remains empty to fetch all documents.
-      console.log("User is Branch: fetching all rates.");
-    } else if (userType === "franchise") {
-      // Franchise user must have a userId
+    // Build the query based on the userType and the new 'status'/'assignedTo' logic
+    if (userType === "admin" || userType === "branch") {
+      // Admins and Branches can see services from all rates.
+      // The query remains empty to fetch all documents.
+      console.log("[API/SERVICES] User is Admin/Branch: fetching all rates to determine services.");
+      query = {}; // No filter
+    } else if (userType === "franchise" || userType === "client") {
+      // Franchise and Client users must have a userId
       if (!userId) {
         return NextResponse.json(
-          { error: "Franchise user must have a userId header" },
+          { message: "User ID is required for franchise/client access" },
           { status: 400 }
         );
       }
       
-      console.log(`User is Franchise (${userId}): fetching specific rates.`);
-      // Franchise sees public rates (no refCode) OR rates matching their userId.
-      // We use the $or operator to combine these two conditions.
+      console.log(`[API/SERVICES] User is Franchise/Client (${userId}): fetching specific rates to determine services.`);
+      // They can see services from rates that are 'live' OR rates that are 'unlisted' AND assigned to them.
       query = {
         $or: [
-          // Condition 1: refCode is not defined or is null
-          { refCode: { $in: [null, undefined] } },
-          // Condition 2: refCode matches the franchise's userId
-          { refCode: userId },
-        ],
-      };
-    } else if (userType === "client") {
-      // Client user must have a userId
-      if (!userId) {
-        return NextResponse.json(
-          { error: "Client user must have a userId header" },
-          { status: 400 }
-        );
-      }
-
-      console.log(`User is Client (${userId}): fetching specific rates.`);
-      // Client sees public rates (no refCode), OR rates matching their userId, OR rates matching their franchise's userId.
-      query = {
-        $or: [
-          { refCode: { $in: [null, undefined] } },
-          { refCode: userId },
+          // Condition 1: The rate is public for everyone.
+          { status: 'live' },
+          // Condition 2: The rate is unlisted, AND this user's ID is in the 'assignedTo' array.
+          { status: 'unlisted', assignedTo: userId }
         ],
       };
     } else {
-      // For any other user (or unauthenticated users), only show public rates.
-      console.log("User is public/unknown: fetching only public rates.");
-      query = { refCode: { $in: [null, undefined] } };
+      // For any other user (or unauthenticated users), only show services from public 'live' rates.
+      console.log("[API/SERVICES] User is public/unknown: fetching only live rates to determine services.");
+      query = { status: 'live' };
     }
 
-    // 4. Execute the query and select only the fields you need
-    const rates = await Rate.find(query, { originalName: 1, refCode: 1 });
+    // Execute the query.
+    // **Optimization**: We only need the 'originalName' field to build the list of services.
+    // This makes the database query much faster and more efficient.
+    const rates = await Rate.find(query).select({ originalName: 1 });
 
-    // The rest of your logic to get unique services remains the same
-    const services = [
-      ...new Set(
-        rates
-          .map((rate) => rate.originalName)
-          .filter(Boolean)
-      ),
-    ].sort();
+    // Use a Set to get a unique list of service names (originalName).
+    const uniqueServices = new Set(
+      rates
+        .map((rate) => rate.originalName) // Extract the 'originalName' from each document
+        .filter(Boolean) // Filter out any null or empty strings
+    );
 
-    return NextResponse.json(services);
+    // Convert the Set back to an array and sort it alphabetically.
+    const sortedServices = Array.from(uniqueServices).sort();
+
+    // Return the final list of unique, sorted service names.
+    return NextResponse.json(sortedServices);
+
   } catch (error) {
-    console.error(error);
+    console.error("Error in GET /api/services:", error);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { message: "An internal server error occurred" },
       { status: 500 }
     );
   }

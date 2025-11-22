@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Check, ChevronsUpDown, Loader2, Info, PackageSearch } from 'lucide-react'
-import { cn } from "@/lib/utils" // Ensure you have this utility file from shadcn/ui
+import { cn } from "@/lib/utils"
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
@@ -16,7 +16,7 @@ import { Separator } from '@/components/ui/separator'
 
 // Helper function for consistent currency formatting
 const formatCurrency = (amount) => {
-    if (amount === null || amount === undefined) return 'N/A';
+    if (amount === null || amount === undefined || isNaN(amount)) return 'N/A';
     return amount.toLocaleString('en-IN', {
         style: 'currency',
         currency: 'INR',
@@ -27,8 +27,8 @@ const formatCurrency = (amount) => {
 
 // A dedicated component for rendering each result card.
 const ResultCard = ({ data, billedWeight, showProfit }) => {
-    // Calculate per-kg rate based on the final billed weight used for the API call
     const perKgRate = billedWeight > 0 ? data.total / billedWeight : 0;
+    const hasOtherCharges = data.chargesBreakdown && Object.keys(data.chargesBreakdown).length > 0;
 
     return (
         <Card className="flex flex-col justify-between shadow-md hover:shadow-lg transition-shadow duration-300">
@@ -49,56 +49,39 @@ const ResultCard = ({ data, billedWeight, showProfit }) => {
                     <AccordionItem value="item-1">
                         <AccordionTrigger className="text-sm font-semibold">View Price Breakdown</AccordionTrigger>
                         <AccordionContent className="text-sm space-y-2 pt-2">
-                            {/* Conditional rendering for Base Rate and Profit */}
-                            {showProfit ? (
-                                <>
-                                    <div className="flex justify-between">
-                                        <span>Base Rate:</span>
-                                        <span className="font-mono">{formatCurrency(data.baseRate)}</span>
+                            <div className="flex justify-between">
+                                <span>Base Rate:</span>
+                                <span className="font-mono">{formatCurrency(data.baseRate)}</span>
+                            </div>
+                            {showProfit && (
+                                data.isSpecialRate ? (
+                                    <div className="flex justify-between items-center p-2 bg-blue-50 border border-blue-200 rounded-md">
+                                        <Info className="h-4 w-4 text-blue-500 mr-2" />
+                                        <span className="text-blue-700 text-xs font-semibold">Special Rate (No Profit Applied)</span>
                                     </div>
-                                    {data.isSpecialRate ? (
-                                        <div className="flex justify-between items-center p-2 bg-blue-50 border border-blue-200 rounded-md">
-                                            <Info className="h-4 w-4 text-blue-500 mr-2" />
-                                            <span className="text-blue-700 text-xs font-semibold">Special Rate (Profit Included)</span>
-                                        </div>
-                                    ) : (
-                                        <div className="flex justify-between">
-                                            <span>Profit ({data.profitPercent}%):</span>
-                                            <span className="font-mono">{formatCurrency(data.profitCharges)}</span>
-                                        </div>
-                                    )}
-                                </>
-                            ) : (
-                                <div className="flex justify-between">
-                                    <span>Base Rate:</span>
-                                    {/* For non-admins, show Base Rate + Profit combined */}
-                                    <span className="font-mono">{formatCurrency(data.baseRate + data.profitCharges)}</span>
-                                </div>
+                                ) : (
+                                    <div className="flex justify-between">
+                                        <span>Profit ({data.profitPercent}%):</span>
+                                        <span className="font-mono">{formatCurrency(data.profitCharges)}</span>
+                                    </div>
+                                )
                             )}
-
-                            {data.extraChargeTotal > 0 && (
+                            {hasOtherCharges && (
                                 <>
                                     <Separator className="my-2" />
                                     <div className="flex justify-between font-medium">
-                                        <span>Extra Charges Total:</span>
-                                        <span className="font-mono">{formatCurrency(data.extraChargeTotal)}</span>
+                                        <span>Additional Charges:</span>
                                     </div>
-                                    <div className="pl-4 border-l-2 ml-2">
-                                        {Object.entries(data.extraChargesBreakdown).map(([key, value]) => (
+                                    <div className="pl-4 border-l-2 ml-2 space-y-1">
+                                        {Object.entries(data.chargesBreakdown).map(([key, value]) => (
                                             <div key={key} className="flex justify-between text-xs text-muted-foreground">
                                                 <span>{key}:</span>
                                                 <span className="font-mono">{formatCurrency(value)}</span>
                                             </div>
                                         ))}
                                     </div>
-                                    <Separator className="my-2" />
                                 </>
                             )}
-
-                            <div className="flex justify-between">
-                                <span>Fuel Surcharge ({data.fuelChargePercent}%):</span>
-                                <span className="font-mono">{formatCurrency(data.fuelCharges)}</span>
-                            </div>
                             <Separator className="my-2" />
                             <div className="flex justify-between font-semibold">
                                 <span>Subtotal (before GST):</span>
@@ -128,12 +111,12 @@ export default function GetRatesPage() {
 
     // State for calculated values
     const [volumetricWeight, setVolumetricWeight] = useState(0);
-    const [chargeableWeight, setChargeableWeight] = useState(0); // Raw max weight
-    const [billedWeight, setBilledWeight] = useState(0); // Final rounded weight for API
+    const [chargeableWeight, setChargeableWeight] = useState(0);
+    const [billedWeight, setBilledWeight] = useState(0);
 
     // General state
     const [availableTypes, setAvailableTypes] = useState([]);
-    const [showProfit, setShowProfit] = useState(true);
+    const [showProfit, setShowProfit] = useState(false);
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -141,46 +124,44 @@ export default function GetRatesPage() {
     const [code, setCode] = useState('');
     const [hasSearched, setHasSearched] = useState(false);
 
-    // This effect recalculates all weights whenever inputs change
     useEffect(() => {
         const l = parseFloat(length) || 0;
         const b = parseFloat(breadth) || 0;
         const h = parseFloat(height) || 0;
         const aw = parseFloat(actualWeight) || 0;
-
         let volWeight = (l * b * h) / 5000;
         setVolumetricWeight(volWeight);
-
         const rawChargeableWeight = Math.max(aw, volWeight);
         setChargeableWeight(rawChargeableWeight);
-
         let finalWeight = 0;
         if (rawChargeableWeight > 0) {
-            if (rawChargeableWeight <= 20) {
-                finalWeight = Math.ceil(rawChargeableWeight * 2) / 2;
-            } else {
-                finalWeight = Math.ceil(rawChargeableWeight);
-            }
+            finalWeight = (rawChargeableWeight <= 20) ? Math.ceil(rawChargeableWeight * 2) / 2 : Math.ceil(rawChargeableWeight);
         }
         setBilledWeight(finalWeight);
     }, [actualWeight, length, breadth, height]);
 
-    // Effect to fetch services and user data on component mount
+    // --- FIX 1: Pass values directly to fetchServices ---
     useEffect(() => {
         const ut = localStorage.getItem('userType') || '';
         const c = localStorage.getItem('code') || '';
-        fetchServices();
+        
         setUserType(ut);
         setCode(c);
-        if (ut !== 'admin') setShowProfit(false);
+        
+        fetchServices(ut, c); // Pass the values directly
+        
+        if (ut === 'admin') {
+            setShowProfit(true);
+        }
     }, []);
 
-    const fetchServices = async () => {
+    // --- FIX 2: Update fetchServices to accept parameters ---
+    const fetchServices = async (currentUserType, currentCode) => {
         try {
             const response = await fetch("/api/services", {
                 headers: {
-                    userType: localStorage.getItem("userType"),
-                    userId: localStorage.getItem("code"),
+                    userType: currentUserType,
+                    userId: currentCode,
                 },
             });
             const data = await response.json();
@@ -190,17 +171,12 @@ export default function GetRatesPage() {
         }
     };
 
-    // Effect to fetch profit percentage based on user type and country
     useEffect(() => {
         const fetchProfitPercent = async () => {
-            if (!country || userType === 'admin') return;
-
+            if (!country || !userType || userType === 'admin') return;
             try {
-                setLoading(true);
-                setError('');
                 const normCountry = country.trim().toLowerCase();
                 let totalPercent = 0;
-
                 if (userType === 'franchise') {
                     const res = await axios.get(`/api/franchises/${code}`);
                     const franchise = Array.isArray(res.data) ? res.data[0] : res.data;
@@ -215,9 +191,8 @@ export default function GetRatesPage() {
                     const clientMatch = clientRates.find(r => r.country?.trim().toLowerCase() === normCountry);
                     const clientRest = clientRates.find(r => r.country?.trim().toLowerCase() === 'rest of world');
                     const clientP = Number(clientMatch?.profitPercent ?? clientRest?.profitPercent ?? 0);
-
                     let franchiseP = 0;
-                    if (client?.owner !== "admin") {
+                    if (client?.owner && client.owner !== "admin") {
                         const franchiseRes = await axios.get(`/api/franchises/${client.owner}`);
                         const franchise = Array.isArray(franchiseRes.data) ? franchiseRes.data[0] : franchiseRes.data;
                         const fRates = franchise?.rates || [];
@@ -229,31 +204,30 @@ export default function GetRatesPage() {
                 }
                 setProfitPercent(totalPercent.toString());
             } catch (err) {
-                console.error(err);
-                setError('Failed to fetch profit percent data.');
-            } finally {
-                setLoading(false);
+                console.error("Failed to fetch profit percent:", err);
             }
         };
-
         fetchProfitPercent();
     }, [country, userType, code]);
 
     const handleFetchRates = async () => {
-        if ((!billedWeight || billedWeight <= 0) || !country) {
+        if (!billedWeight || billedWeight <= 0 || !country) {
             setError('Please provide a valid weight/dimensions and select a country.');
             return;
         }
-
         setLoading(true);
         setError('');
         setResults([]);
         setHasSearched(true);
-
         try {
+            // --- FIX 3: Pass headers directly in this function too ---
+            const apiHeaders = {
+                userType: userType,
+                userId: code,
+            };
             const promises = availableTypes.map(async (type) => {
                 const params = new URLSearchParams({ type, weight: billedWeight, country, profitPercent });
-                const res = await fetch(`/api/rate?${params.toString()}`);
+                const res = await fetch(`/api/rate?${params.toString()}`, { headers: apiHeaders });
                 if (!res.ok) {
                     const errorData = await res.json();
                     return { type, data: { error: errorData.error || `HTTP error! status: ${res.status}` } };
@@ -261,10 +235,8 @@ export default function GetRatesPage() {
                 const data = await res.json();
                 return { type, data };
             });
-
             const resultsData = await Promise.all(promises);
-            const filtered = resultsData.filter(r => !r.data.error).sort((a, b) => a.data.total - b.data.total);
-
+            const filtered = resultsData.filter(r => r.data && !r.data.error).sort((a, b) => a.data.total - b.data.total);
             if (!filtered.length) {
                 const firstError = resultsData.find(r => r.data.error);
                 setError(firstError?.data.error || 'No services found for the selected criteria.');
@@ -303,8 +275,6 @@ export default function GetRatesPage() {
                                                 <CommandGroup className="max-h-60 overflow-y-auto">
                                                     {Countries.map((c) => (
                                                         <CommandItem key={c} value={c} onSelect={(currentValue) => {
-                                                            // *** THIS IS THE FIX ***
-                                                            // Find the correctly cased country from the list.
                                                             const selectedCountry = Countries.find(countryInList => countryInList.toLowerCase() === currentValue.toLowerCase());
                                                             setCountry(country === selectedCountry ? "" : selectedCountry);
                                                             setCountrySearchOpen(false);
@@ -334,15 +304,15 @@ export default function GetRatesPage() {
                             <div className="md:col-span-2 grid grid-cols-3 gap-2">
                                 <div>
                                     <Label htmlFor="volWeight" className="text-sm text-muted-foreground">Volumetric Wt. (kg)</Label>
-                                    <Input id="volWeight" value={volumetricWeight.toFixed(2)} readOnly className="mt-1 bg-gray-100" />
+                                    <Input id="volWeight" value={volumetricWeight.toFixed(2)} readOnly className="mt-1 bg-gray-100 dark:bg-gray-800" />
                                 </div>
                                 <div>
                                     <Label htmlFor="chargeWeight" className="text-sm text-muted-foreground">Chargeable Wt. (kg)</Label>
-                                    <Input id="chargeWeight" value={chargeableWeight.toFixed(2)} readOnly className="mt-1 bg-gray-100" />
+                                    <Input id="chargeWeight" value={chargeableWeight.toFixed(2)} readOnly className="mt-1 bg-gray-100 dark:bg-gray-800" />
                                 </div>
                                 <div>
                                     <Label htmlFor="billedWeight" className="text-sm font-bold">Billed Weight (kg)</Label>
-                                    <Input id="billedWeight" value={billedWeight.toFixed(2)} readOnly className="mt-1 bg-blue-50 border-blue-400 font-bold" />
+                                    <Input id="billedWeight" value={billedWeight.toFixed(2)} readOnly className="mt-1 bg-blue-50 dark:bg-blue-900/30 border-blue-400 font-bold" />
                                 </div>
                             </div>
                             {showProfit && (
